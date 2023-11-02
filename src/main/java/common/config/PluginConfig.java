@@ -22,11 +22,11 @@ public final class PluginConfig {
     private PluginConfig() {
     }
 
-    public static void init(IntegrationProperties properties, ResBundle resBundle) {
+    public static void init(IntegrationProperties properties) {
         String os = System.getProperty("os.name");
-        String configFilePath = resBundle.getString("config.file.path.linux");
+        String configFilePath = "config.file.path.linux";
         if (os.toLowerCase().startsWith("windows")) {
-            configFilePath = resBundle.getString("config.file.path.windows");
+            configFilePath = "config.file.path.windows";
         }
 
         String configPathString = properties.getServiceProperties().get(configFilePath);
@@ -34,9 +34,9 @@ public final class PluginConfig {
         try {
             configPath = Paths.get(configPathString);
         } catch (Throwable e) {
-            LOGGER.debug("Config file not found by path {}, initializing with default", configPathString);
+            LOGGER.debug("Config file not found by path {}, initializing with default", configPathString, e);
             try {
-                PROPERTIES = MAPPER.readValue("", PluginConfigProperties.class);
+                PROPERTIES = MAPPER.treeToValue(MAPPER.createObjectNode(), PluginConfigProperties.class);
             } catch (IOException ex) {
                 throw new BaseError(ex);
             }

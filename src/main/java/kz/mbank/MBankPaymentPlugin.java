@@ -54,7 +54,7 @@ public class MBankPaymentPlugin implements PaymentPlugin {
     private void initSharedResources() {
         LogConfig.init(logger);
         ResBundleConfig.init(resources);
-        PluginConfig.init(properties, resources);
+        PluginConfig.init(properties);
         UIConfig.init(ui);
         PrinterConfig.init(printer);
         logger.debug("Shared resources loaded");
