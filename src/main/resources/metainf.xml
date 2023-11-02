@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SetIntegration set10-api-version="0.0.3" version="1.0.0" xmlns="http://crystals.ru/set10/api/metainf"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                xsi:schemaLocation="http://crystals.ru/set10/api/metainf metainf.xsd ">
+    <ExternalService serviceType="PAYMENT" localeKey="service.name" id="mbank.payment.service">
+        <Description>Оплата по терминалу MBank</Description>
+        <Options>
+            <String key="config.file.path.windows" localeKey="path.windows.description"/>
+            <String key="config.file.path.linux" localeKey="path.linux.description"/>
+        </Options>
+        <PaymentPlugin paymentType="ELECTRONIC" localeKey="plugin.name" id="mbank.payment.plugin">
+            <Description>MBank плагин оплат</Description>
+            <PersistedField key="mbank.payment.transaction.no" localeKey="transaction.no.field.name" exportable="true" visible="true"/>
+            <PersistedField key="mbank.payment.tag.rrn" localeKey="tag.rrn.field.name" exportable="true" visible="true"/>
+            <PersistedField key="mbank.payment.terminal.number" localeKey="terminal.no.field.name" exportable="true" visible="true"/>
+            <PersistedField key="mbank.payment.transaction.date" localeKey="transaction.date.field.name" exportable="true" visible="true"/>
+            <PersistedField key="mbank.payment.receipt.info" localeKey="receipt.info.field.name" exportable="true" visible="true"/>
+            <PersistedField key="mbank.payment.bank.id" localeKey="bank.id.field.name" exportable="true" visible="true"/>
+            <PersistedField key="mbank.payment.issuer.name" localeKey="issuer.name.field.name" exportable="true" visible="true"/>
+            <PersistedField key="mbank.payment.card.no" localeKey="card.no.field.name" exportable="true" visible="true"/>
+            <PersistedField key="mbank.payment.payment.method" localeKey="payment.method.field.name" exportable="true" visible="true"/>
+            <PersistedField key="mbank.payment.payment.method.code" localeKey="payment.method.code.field.name" exportable="true" visible="true"/>
+            <PersistedField key="mbank.payment.payment.id" localeKey="qr.payment.id.field.name" exportable="true" visible="true"/>
+        </PaymentPlugin>
+    </ExternalService>
+</SetIntegration>

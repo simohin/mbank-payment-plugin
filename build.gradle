@@ -1,0 +1,68 @@
+plugins {
+    id 'org.ajoberstar.grgit' version '1.7.2'
+}
+
+apply plugin: 'java'
+apply plugin: 'org.ajoberstar.grgit'
+
+sourceCompatibility = 1.8
+group = 'kz.prosystems'
+version = '1.0.0'
+compileJava.options.encoding = 'UTF-8'
+compileTestJava.options.encoding = 'UTF-8'
+
+jar {
+    archiveBaseName = 'MBankPaymentPlugin'
+    manifest {
+        def gitRevision = ""
+        def gitBranch = ""
+        try {
+            gitRevision = "${grgit.head().abbreviatedId}"
+            gitBranch = "${grgit.branch.getCurrent().name}"
+        } catch (Exception e) {
+        }
+
+        attributes(
+                'Build-Date': new Date().format("dd.MM.yyyy HH:mm:ss"),
+                'Implementation-Version': version,
+                'Implementation-Vendor': 'PROSYSTEMS LLC',
+                'Build-Machine': InetAddress.getLocalHost().getCanonicalHostName(),
+                'Vendor-URL': 'https://prosystems.kz/',
+                'Vendor-Email': 'info@prosystems.kz',
+                'Vendor-Phone': '+7 (747) 094-99-88',
+                'Project': project.name,
+                'Revision': gitRevision,
+                'Branch': gitBranch
+        )
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url "https://artifactory.setmachine.ru:8443/repository/set10-api-public"
+    }
+}
+
+def setApiVersion = '0.0.44'
+def lombokVersion = "1.18.30"
+def jacksonVersion = '2.15.3'
+def apacheHttpComponentsVersion = '4.5.13'
+
+dependencies {
+    implementation files('libs/setapi-plugin-lib-0.0.1.jar')
+    implementation "ru.crystals.api:set10pos-api:$setApiVersion"
+
+
+    implementation "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+    implementation "com.fasterxml.jackson.module:jackson-module-jaxb-annotations:$jacksonVersion"
+    implementation "org.apache.httpcomponents:httpclient:$apacheHttpComponentsVersion"
+
+    compileOnly "org.projectlombok:lombok:$lombokVersion"
+    annotationProcessor "org.projectlombok:lombok:$lombokVersion"
+
+    testCompileOnly "org.projectlombok:lombok:$lombokVersion"
+    testAnnotationProcessor "org.projectlombok:lombok:$lombokVersion"
+}

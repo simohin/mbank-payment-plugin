@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+
+    <!-- For metainf -->
+    <entry key="service.name">MBank</entry>
+    <entry key="plugin.name">MBank Payment</entry>
+
+    <!-- For UI forms -->
+    <entry key="enter.sum.to.pay">Enter sum to pay</entry>
+    <entry key="connecting">Connecting to MBank terminal</entry>
+    <entry key="connection.error">MBank terminal is not available</entry>
+    <entry key="transaction.not.found">Server Error...\nTransaction ID not found!</entry>
+    <entry key="refund.error">An error occured while refunding via MBankPay!</entry>
+    <entry key="refund.timeout">Timeout!\nTry again.</entry>
+    <entry key="payment.timeout">Timeout!\nTry again.</entry>
+    <entry key="payment.error">Error on payment via MBank Pay!</entry>
+    <entry key="path.windows.description">Path to config file(Linux)</entry>
+    <entry key="path.linux.description">Path to config file(Windows)</entry>
+    <entry key="cancellation.in.progress">Cancellation in progress!</entry>
+    <entry key="cancellation.error">An error occured while cancellation via MBank Pay!</entry>
+
+    <!-- For slip -->
+    <entry key="transaction.no.field.name">Transaction number</entry>
+    <entry key="tag.rrn.field.name">Ref. number</entry>
+    <entry key="terminal.no.field.name">Terminal number</entry>
+    <entry key="transaction.date.field.name">Transaction date</entry>
+    <entry key="bank.id.field.name">Bank ID</entry>
+    <entry key="card.no.field.name">Card Number</entry>
+    <entry key="issuer.name.field.name">Card Type</entry>
+    <entry key="receipt.info.field.name">Bank slip</entry>
+    <entry key="qr.payment.id.field.name">QR transaction number</entry>
+    <entry key="payment.method.field.name">Payment Method</entry>
+    <entry key="payment.method.code.field.name">Payment Method Code</entry>
+
+    <!-- For refund -->
+
+    <!-- For cancellation -->
+</properties>

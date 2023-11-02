@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+
+    <!-- For metainf -->
+    <entry key="service.name">MBank Pay</entry>
+    <entry key="plugin.name">MBank Pay Оплата</entry>
+
+    <!-- For UI forms -->
+    <entry key="enter.sum.to.pay">Введите сумму к оплате</entry>
+    <entry key="connecting">Выполняется запрос к MBank терминалу</entry>
+    <entry key="connection.error">Нет связи с MBank терминалом</entry>
+    <entry key="transaction.not.found">Ошибка сервера...\nНомер транзакций не найден!</entry>
+    <entry key="refund.error">Ошибка при возврате через MBank Pay!</entry>
+    <entry key="refund.timeout">Время ожидания вышло!\nПопробуйте еще раз.</entry>
+    <entry key="payment.timeout">Время ожидания вышло!\nПопробуйте еще раз.</entry>
+    <entry key="payment.error">Ошибка оплаты через MBank Pay!</entry>
+    <entry key="path.windows.description">Путь до файла конфигурации(Linux)</entry>
+    <entry key="path.linux.description">Путь до файла конфигурации(Windows)</entry>
+    <entry key="cancellation.in.progress">Аннулирование в прогрессе!</entry>
+    <entry key="cancellation.error">Ошибка при аннулировании через MBank Pay!</entry>
+
+    <!-- For slip -->
+    <entry key="transaction.no.field.name">Номер транзакции</entry>
+    <entry key="tag.rrn.field.name">RRN</entry>
+    <entry key="terminal.no.field.name">Номер терминала</entry>
+    <entry key="card.no.field.name">Маска карты</entry>
+    <entry key="payment.method.field.name">Метод оплаты</entry>
+    <entry key="payment.method.code.field.name">Код метода оплаты</entry>
+    <entry key="issuer.name.field.name">Тип карты</entry>
+    <entry key="receipt.info.field.name">Слип чек</entry>
+    <entry key="qr.payment.id.field.name">Номер транзакции QR</entry>
+    <entry key="transaction.date.field.name">Дата и время транзакции</entry>
+    <entry key="bank.id.field.name">Идентификатор банка</entry>
+</properties>
