@@ -1,7 +1,15 @@
 package kz.mbank;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import common.config.PluginConfigProperties;
+import common.config.UIConfig;
+import common.exception.BaseError;
+import common.exception.TerminalUnavailableError;
+import common.service.BankIntegrationService;
+import common.service.RequestBuildingService;
+import common.service.UIService;
 import kz.mbank.client.dto.HasTimeOutFlag;
 import kz.mbank.client.dto.PaymentRequestDto;
 import kz.mbank.client.dto.PaymentResponse;
@@ -10,30 +18,21 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.slf4j.Logger;
 import ru.crystals.pos.api.events.ShiftEventListener;
 import ru.crystals.pos.api.plugin.payment.Payment;
-import ru.crystals.pos.spi.plugin.payment.CancelRequest;
-import ru.crystals.pos.spi.plugin.payment.InvalidPaymentException;
-import ru.crystals.pos.spi.plugin.payment.PaymentRequest;
-import ru.crystals.pos.spi.plugin.payment.RefundRequest;
-import setapi.plugin.lib.config.PluginConfigProperties;
-import setapi.plugin.lib.config.UIConfig;
-import setapi.plugin.lib.exception.BaseError;
-import setapi.plugin.lib.exception.TerminalUnavailableError;
-import setapi.plugin.lib.service.BankIntegrationService;
-import setapi.plugin.lib.service.RequestBuildingService;
-import setapi.plugin.lib.service.UIService;
+import ru.crystals.pos.spi.plugin.payment.*;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.SocketTimeoutException;
+import java.time.format.DateTimeFormatter;
 
-import static setapi.plugin.lib.config.HttpClientConfig.getBuilder;
-import static setapi.plugin.lib.config.LogConfig.getLogger;
-import static setapi.plugin.lib.config.ObjectMapperConfig.getInstance;
-import static setapi.plugin.lib.config.PluginConfig.getProperties;
-import static setapi.plugin.lib.config.RequestBuilderConfig.getRequestBuilder;
-import static setapi.plugin.lib.service.TransactionStartHandler.checkTransactionExpired;
+import static common.config.HttpClientConfig.getBuilder;
+import static common.config.LogConfig.getLogger;
+import static common.config.ObjectMapperConfig.getInstance;
+import static common.config.PluginConfig.getProperties;
+import static common.config.RequestBuilderConfig.getRequestBuilder;
+import static common.service.TransactionStartHandler.checkTransactionExpired;
 
 public class MBankIntegrationService implements BankIntegrationService, ShiftEventListener {
 
@@ -57,15 +56,37 @@ public class MBankIntegrationService implements BankIntegrationService, ShiftEve
     @Override
     public void process(PaymentRequest paymentRequest, int amount) {
         val requestDto = new PaymentRequestDto();
+        val receipt = paymentRequest.getReceipt();
+        requestDto.setChequeNumber(receipt.getNumber());
+        requestDto.setShiftNumber(receipt.getShiftNo());
         requestDto.setAmount(BigDecimal.valueOf(amount).setScale(2, RoundingMode.HALF_UP));
         PaymentResponse response = executeWithHandling("payment", requestDto);
         if (!response.isSuccess()) {
             throw new BaseError(response.getMessage());
         }
+        processSuccess(paymentRequest.getPaymentCallback(), requestDto, amount);
+    }
+
+    private void processSuccess(PaymentCallback callback, PaymentRequestDto requestDto, int amount) {
+
+        val payment = new Payment();
+        payment.setSum(BigDecimal.valueOf(amount));
+
+        val data = payment.getData();
+        String receipt;
         try {
-            Payment payment = new Payment();
-            payment.setSum(BigDecimal.valueOf(amount));
-            paymentRequest.getPaymentCallback().paymentCompleted(payment);
+            receipt = mapper.writeValueAsString(requestDto);
+        } catch (JsonProcessingException e) {
+            logger.error("Failed to serialise request dto", e);
+            receipt = requestDto.toString();
+        }
+        data.put("mbank.payment.transaction.date", requestDto.getChequeDate().format(DateTimeFormatter.ISO_DATE_TIME));
+        data.put("mbank.payment.bank.id", BANK_ID);
+        data.put("mbank.payment.payment.method", requestDto.getPaymentType().name().toLowerCase());
+        data.put("mbank.payment.receipt.info", receipt);
+
+        try {
+            callback.paymentCompleted(payment);
         } catch (InvalidPaymentException e) {
             throw new BaseError(e);
         }

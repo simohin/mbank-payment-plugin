@@ -1,17 +1,13 @@
 package kz.mbank.client.dto;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
-import org.omg.PortableInterceptor.SUCCESSFUL;
 
 import java.util.Arrays;
 
 @Data
 @NoArgsConstructor
-@JsonNaming(PropertyNamingStrategies.LowerCamelCaseStrategy.class)
 public class PaymentResponse {
 
     private Integer code;
