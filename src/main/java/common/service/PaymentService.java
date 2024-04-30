@@ -1,7 +1,7 @@
 package common.service;
 
-import ru.crystals.pos.spi.plugin.payment.PaymentRequest;
 import common.model.Operation;
+import ru.crystals.pos.spi.plugin.payment.PaymentRequest;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -22,6 +22,7 @@ public class PaymentService extends SharedResourcesService {
     }
 
     private void doProcess(PaymentRequest request, BigDecimal amount) {
+        uiService.showSpinner("Выполняется запрос на сервер");
         setTransactionStart();
         setTransactionAmount(amount);
         setOperation(Operation.PAYMENT);

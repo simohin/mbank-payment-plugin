@@ -1,7 +1,11 @@
 package common.util;
 
+import common.config.CustomerDisplayConfig;
 import common.config.LogConfig;
 import common.config.PluginConfig;
+import common.config.UIConfig;
+import common.exception.BaseError;
+import common.exception.TerminalUnavailableError;
 import common.service.TransactionAmountHandler;
 import org.slf4j.Logger;
 import ru.crystals.pos.api.plugin.payment.Payment;
@@ -11,9 +15,6 @@ import ru.crystals.pos.spi.plugin.payment.InvalidPaymentException;
 import ru.crystals.pos.spi.plugin.payment.PaymentCallback;
 import ru.crystals.pos.spi.ui.DialogFormParameters;
 import ru.crystals.pos.spi.ui.UIForms;
-import common.config.UIConfig;
-import common.exception.BaseError;
-import common.exception.TerminalUnavailableError;
 
 import java.util.Collections;
 import java.util.Optional;
@@ -38,6 +39,7 @@ public class ErrorHandlingUtil {
     public static void runWithHandling(Runnable action, PaymentCallback callback) {
         Logger logger = LogConfig.getLogger();
         UIForms ui = UIConfig.getUiForms();
+        CustomerDisplayConfig.getDisplay().clear();
         try {
             action.run();
         } catch (TerminalUnavailableError e) {

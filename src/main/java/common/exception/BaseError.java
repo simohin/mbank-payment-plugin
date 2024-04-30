@@ -15,6 +15,6 @@ public class BaseError extends RuntimeException {
     }
 
     public BaseError(Throwable cause) {
-        super(BASE_ERROR, cause);
+        super(cause.getMessage(), cause);
     }
 }

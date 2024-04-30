@@ -1,18 +1,7 @@
-package kz.mbank;
+package kz.kaspi.qr.plugin;
 
-import org.slf4j.Logger;
-import ru.crystals.pos.api.plugin.PaymentPlugin;
-import ru.crystals.pos.spi.IntegrationProperties;
-import ru.crystals.pos.spi.POSInfo;
-import ru.crystals.pos.spi.ResBundle;
-import ru.crystals.pos.spi.annotation.Inject;
-import ru.crystals.pos.spi.annotation.POSPlugin;
-import ru.crystals.pos.spi.equipment.SetApiPrinter;
-import ru.crystals.pos.spi.plugin.payment.CancelRequest;
-import ru.crystals.pos.spi.plugin.payment.PaymentRequest;
-import ru.crystals.pos.spi.plugin.payment.RefundRequest;
-import ru.crystals.pos.spi.ui.UIForms;
 import common.config.BankIntegrationConfig;
+import common.config.CustomerDisplayConfig;
 import common.config.LogConfig;
 import common.config.PluginConfig;
 import common.config.PrinterConfig;
@@ -21,16 +10,32 @@ import common.config.UIConfig;
 import common.service.CancelService;
 import common.service.PaymentService;
 import common.service.RefundService;
+import kz.kaspi.qr.plugin.integration.config.ClientConfig;
+import org.slf4j.Logger;
+import ru.crystals.pos.api.plugin.PaymentPlugin;
+import ru.crystals.pos.spi.IntegrationProperties;
+import ru.crystals.pos.spi.POSInfo;
+import ru.crystals.pos.spi.ResBundle;
+import ru.crystals.pos.spi.annotation.Inject;
+import ru.crystals.pos.spi.annotation.POSPlugin;
+import ru.crystals.pos.spi.equipment.CustomerDisplay;
+import ru.crystals.pos.spi.equipment.SetApiPrinter;
+import ru.crystals.pos.spi.plugin.payment.CancelRequest;
+import ru.crystals.pos.spi.plugin.payment.PaymentRequest;
+import ru.crystals.pos.spi.plugin.payment.RefundRequest;
+import ru.crystals.pos.spi.ui.UIForms;
 
 import javax.annotation.PostConstruct;
 
 import static common.util.ErrorHandlingUtil.runWithHandling;
 
-@POSPlugin(id = "mbank.payment.plugin")
-public class MBankPaymentPlugin implements PaymentPlugin {
+@POSPlugin(id = "kaspi.qr.payment.plugin")
+public class KaspiQrPaymentPlugin implements PaymentPlugin {
 
     @Inject
     private POSInfo pos;
+    @Inject
+    private CustomerDisplay display;
     @Inject
     private IntegrationProperties properties;
     @Inject
@@ -52,6 +57,7 @@ public class MBankPaymentPlugin implements PaymentPlugin {
     }
 
     private void initSharedResources() {
+        CustomerDisplayConfig.init(display);
         LogConfig.init(logger);
         ResBundleConfig.init(resources);
         PluginConfig.init(properties);
@@ -61,7 +67,8 @@ public class MBankPaymentPlugin implements PaymentPlugin {
     }
 
     private void initServices() {
-        BankIntegrationConfig.init(new MBankIntegrationService());
+        ClientConfig.init();
+        BankIntegrationConfig.init(new KaspiQrIntegrationService());
         paymentService = new PaymentService();
         refundService = new RefundService();
         cancelService = new CancelService();

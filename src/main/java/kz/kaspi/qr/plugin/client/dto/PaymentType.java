@@ -1,4 +1,4 @@
-package kz.mbank.client.dto;
+package kz.kaspi.qr.plugin.client.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
