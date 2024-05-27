@@ -3,6 +3,7 @@ package kz.kaspi.qr.plugin.integration;
 import common.config.CustomerDisplayConfig;
 import common.config.LogConfig;
 import common.exception.BaseError;
+import common.service.UIService;
 import kz.kaspi.qr.plugin.integration.config.ClientConfig;
 import kz.kaspi.qr.plugin.integration.dto.Create;
 import kz.kaspi.qr.plugin.integration.dto.DeviceRegistration;
@@ -10,6 +11,7 @@ import kz.kaspi.qr.plugin.integration.dto.DeviceToken;
 import kz.kaspi.qr.plugin.integration.dto.Payment;
 import kz.kaspi.qr.plugin.integration.dto.PaymentDetails;
 import kz.kaspi.qr.plugin.integration.dto.PaymentStatus;
+import kz.kaspi.qr.plugin.integration.dto.PaymentStatusData;
 import kz.kaspi.qr.plugin.integration.dto.StatusCode;
 import kz.kaspi.qr.plugin.integration.dto.TradePoint;
 import kz.kaspi.qr.plugin.integration.dto.response.KaspiQRPayResponse;
@@ -25,7 +27,9 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.function.Function;
 
+import static common.config.UIConfig.getUiService;
 import static java.lang.System.currentTimeMillis;
 
 public class KaspiQRPayService {
@@ -45,6 +49,7 @@ public class KaspiQRPayService {
     private final ThreadLocal<Long> returnConfirmTimeout = new ThreadLocal<>();
     private final CustomerDisplay display = CustomerDisplayConfig.getDisplay();
     private final Logger logger = LogConfig.getLogger();
+    private final UIService uiService = getUiService();
 
     public KaspiQRPayService() {
         val retrofit = ClientConfig.getInstance().getRetrofit();
@@ -101,41 +106,67 @@ public class KaspiQRPayService {
         return qrReturn.getQrReturnId();
     }
 
-    public void pollPaymentStatus(String paymentId) {
-        waitInterval();
-        var paymentStatus = executeWithHandling(client.getPaymentStatus(paymentId)).getStatus();
-        if (!paymentStatus.equals(PaymentStatus.WAIT)) {
-            display.clear();
-        }
-        while (paymentStatus.isNonFinal() && isExpired(paymentStatus)) {
+    public void pollStatus(final Context context, Function<String, Call<? extends KaspiQRPayResponse<PaymentStatusData>>> function) {
+        while (context.getStatus() == null || context.getStatus().isNonFinal()) {
             waitInterval();
-            paymentStatus = executeWithHandling(client.getPaymentStatus(paymentId)).getStatus();
-            lastPollCall.set(System.currentTimeMillis());
+            if (context.isLocked()) {
+                continue;
+            }
+            try {
+                var res = executeWithBaseHandling(function.apply(context.getId()));
+                context.setStatus(res.getStatus());
+            } catch (IOException e) {
+
+                if (isNonExpired(context.getStatus())) {
+                    continue;
+                }
+
+                context.lock();
+                uiService.showDialog(
+                        "Повторить?",
+                        () -> {
+                            try {
+                                PaymentStatus status = executeWithBaseHandling(client.getPaymentStatus(context.getId())).getStatus();
+                                context.setStatus(status);
+                            } catch (IOException ex) {
+                                pollStatus(context, function);
+                            } finally {
+                                context.unlock();
+                            }
+                        },
+                        () -> {
+                            context.getCallback().paymentNotCompleted();
+                            context.unlock();
+                        });
+            }
+        }
+        display.clear();
+        if (!context.getStatus().isSuccess()) {
+            uiService.showError(
+                    "Операция не успешна, статус " + context.getStatus(),
+                    () -> context.getCallback().paymentNotCompleted()
+            );
         }
     }
 
-    public PaymentStatus pollReturnStatus(String returnId) {
-        waitInterval();
-        var paymentStatus = executeWithHandling(client.getReturnStatus(returnId)).getStatus();
-
-        while (paymentStatus.isNonFinal() && isExpired(paymentStatus)) {
-            waitInterval();
-            paymentStatus = executeWithHandling(client.getReturnStatus(returnId)).getStatus();
-            lastPollCall.set(System.currentTimeMillis());
-        }
-        return paymentStatus;
+    public void pollPaymentStatus(final Context context) {
+        pollStatus(context, client::getPaymentStatus);
     }
 
-    private boolean isExpired(PaymentStatus paymentStatus) {
+    public void pollReturnStatus(final Context context) {
+        pollStatus(context, client::getReturnStatus);
+    }
+
+    private boolean isNonExpired(PaymentStatus paymentStatus) {
         val now = currentTimeMillis();
-        long fromStart = now - start.get() * 1000;
+        long fromStart = now - start.get();
         switch (paymentStatus) {
             case CREATED:
                 return fromStart < waitTimeout.get() * 1000;
             case WAIT:
                 return fromStart < confirmTimeout.get() * 1000;
             default:
-                return true;
+                return fromStart < 180000;
         }
     }
 
@@ -143,8 +174,6 @@ public class KaspiQRPayService {
         long actualInterval = currentTimeMillis() - lastPollCall.get();
 
         val intervalMillis = interval.get() * 1000;
-
-        logger.debug("Actual {}, target {}", actualInterval, intervalMillis);
 
         if (actualInterval < intervalMillis) {
             try {
@@ -156,13 +185,17 @@ public class KaspiQRPayService {
     }
 
     private <T> T executeWithHandling(Call<? extends KaspiQRPayResponse<T>> call) {
-        Response<? extends KaspiQRPayResponse<T>> response;
         try {
-            response = call.execute();
+            return executeWithBaseHandling(call);
         } catch (IOException e) {
             logger.error("Failed on request execution", e);
             throw new BaseError(e);
         }
+    }
+
+    private <T> T executeWithBaseHandling(Call<? extends KaspiQRPayResponse<T>> call) throws IOException {
+        lastPollCall.set(System.currentTimeMillis());
+        Response<? extends KaspiQRPayResponse<T>> response = call.execute();
 
         if (!response.isSuccessful()) {
             logger.error("Failed on request execution. Code: {}, body {}", response.code(), response.body());

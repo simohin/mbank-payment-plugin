@@ -2,6 +2,8 @@ package common.service;
 
 import common.config.ResBundleConfig;
 import common.util.ErrorHandlingUtil;
+import ru.crystals.pos.api.ui.listener.ConfirmListener;
+import ru.crystals.pos.api.ui.listener.DialogListener;
 import ru.crystals.pos.api.ui.listener.SumToPayFormListener;
 import ru.crystals.pos.spi.ResBundle;
 import ru.crystals.pos.spi.plugin.payment.CancelRequest;
@@ -9,6 +11,7 @@ import ru.crystals.pos.spi.plugin.payment.PaymentCallback;
 import ru.crystals.pos.spi.plugin.payment.PaymentRequest;
 import ru.crystals.pos.spi.plugin.payment.RefundRequest;
 import ru.crystals.pos.spi.receipt.Receipt;
+import ru.crystals.pos.spi.ui.DialogFormParameters;
 import ru.crystals.pos.spi.ui.UIForms;
 import ru.crystals.pos.spi.ui.payment.SumToPayFormParameters;
 
@@ -38,6 +41,32 @@ public class UIService {
 
     public void showSumEnterForm(RefundRequest request, Consumer<BigDecimal> amountConsumer, boolean activeSumEnter) {
         showSumEnterForm(request.getRefundReceipt(), request.getSumToRefund(), amountConsumer, request.getPaymentCallback(), activeSumEnter);
+    }
+
+    public void showDialog(String title, Runnable onYes, Runnable onNo) {
+        ui.showDialogForm(
+                new DialogFormParameters(title, "Да", "Нет"),
+                new DialogListener() {
+                    @Override
+                    public void eventButton1pressed() {
+                        onYes.run();
+                    }
+
+                    @Override
+                    public void eventButton2pressed() {
+                        onNo.run();
+                    }
+
+                    @Override
+                    public void eventCanceled() {
+                        eventButton2pressed();
+                    }
+                }
+        );
+    }
+
+    public void showError(String title, ConfirmListener listener) {
+        ui.showErrorForm(title, listener);
     }
 
     private void showSumEnterForm(Receipt receipt, BigDecimal amount, Consumer<BigDecimal> amountConsumer, PaymentCallback callback, boolean activeSumEnter) {

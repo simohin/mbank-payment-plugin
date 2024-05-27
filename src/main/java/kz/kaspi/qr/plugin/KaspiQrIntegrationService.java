@@ -7,6 +7,7 @@ import common.config.PrinterConfig;
 import common.exception.BaseError;
 import common.service.BankIntegrationService;
 import common.service.slip.SlipProperties;
+import kz.kaspi.qr.plugin.integration.Context;
 import kz.kaspi.qr.plugin.integration.KaspiQRPayService;
 import kz.kaspi.qr.plugin.integration.dto.PaymentDetails;
 import lombok.val;
@@ -74,7 +75,8 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
         val scaledAmount = new BigDecimal(amount).setScale(2, RoundingMode.HALF_UP);
         val payment = service.paymentCreate(token, scaledAmount, UUID.randomUUID().toString());
         showQr(payment, scaledAmount);
-        service.pollPaymentStatus(payment.getQrPaymentId());
+        Context context = new Context(payment.getQrPaymentId(), paymentRequest.getPaymentCallback());
+        service.pollPaymentStatus(context);
         val details = service.getDetails(payment.getQrPaymentId(), token);
         processSuccess(paymentRequest.getPaymentCallback(), details);
     }
@@ -134,7 +136,9 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
         val paymentId = refundRequest.getOriginalPayment().getData().get(PAYMENT_ID);
         val details = service.getDetails(paymentId, token);
         val returnId = service.returnCreate(token, details.getAvailableReturnAmount(), UUID.randomUUID().toString());
-        service.pollReturnStatus(returnId);
+        Context context = new Context(returnId, refundRequest.getPaymentCallback());
+        service.pollReturnStatus(context);
+        processSuccess(refundRequest.getPaymentCallback(), service.getDetails(returnId, token));
     }
 
     @Override
