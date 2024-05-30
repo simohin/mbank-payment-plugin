@@ -43,7 +43,7 @@ public class UIService {
         showSumEnterForm(request.getRefundReceipt(), request.getSumToRefund(), amountConsumer, request.getPaymentCallback(), activeSumEnter);
     }
 
-    public void showDialog(String title, Runnable onYes, Runnable onNo) {
+    public void showDialog(String title, final Runnable onYes, final Runnable onNo) {
         ui.showDialogForm(
                 new DialogFormParameters(title, "Да", "Нет"),
                 new DialogListener() {
@@ -59,7 +59,7 @@ public class UIService {
 
                     @Override
                     public void eventCanceled() {
-                        eventButton2pressed();
+                        onNo.run();
                     }
                 }
         );

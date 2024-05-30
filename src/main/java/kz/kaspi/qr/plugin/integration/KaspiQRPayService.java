@@ -11,12 +11,10 @@ import kz.kaspi.qr.plugin.integration.dto.DeviceToken;
 import kz.kaspi.qr.plugin.integration.dto.Payment;
 import kz.kaspi.qr.plugin.integration.dto.PaymentDetails;
 import kz.kaspi.qr.plugin.integration.dto.PaymentStatus;
-import kz.kaspi.qr.plugin.integration.dto.PaymentStatusData;
 import kz.kaspi.qr.plugin.integration.dto.StatusCode;
 import kz.kaspi.qr.plugin.integration.dto.TradePoint;
 import kz.kaspi.qr.plugin.integration.dto.response.KaspiQRPayResponse;
 import lombok.val;
-import lombok.var;
 import org.slf4j.Logger;
 import retrofit2.Call;
 import retrofit2.Response;
@@ -27,7 +25,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.Objects;
-import java.util.function.Function;
+import java.util.Optional;
 
 import static common.config.UIConfig.getUiService;
 import static java.lang.System.currentTimeMillis;
@@ -98,7 +96,7 @@ public class KaspiQRPayService {
         returnStart.set(now);
         returnLastPollCall.set(now);
         returnExpiration.set(qrReturn.getExpireDate());
-        val behaviourOptions = qrReturn.getQrPaymentBehaviorOptions();
+        val behaviourOptions = qrReturn.getQrReturnBehaviorOptions();
         returnInterval.set(5000L);
         returnWaitTimeout.set(behaviourOptions.getQrCodeScanWaitTimeout());
         returnConfirmTimeout.set(behaviourOptions.getQrCodeScanEventPollingInterval());
@@ -106,61 +104,18 @@ public class KaspiQRPayService {
         return qrReturn.getQrReturnId();
     }
 
-    public void pollStatus(final Context context, Function<String, Call<? extends KaspiQRPayResponse<PaymentStatusData>>> function) {
-        while (context.getStatus() == null || context.getStatus().isNonFinal()) {
-            waitInterval();
-            if (context.isLocked()) {
-                continue;
-            }
-            try {
-                var res = executeWithBaseHandling(function.apply(context.getId()));
-                context.setStatus(res.getStatus());
-            } catch (IOException e) {
-
-                if (isNonExpired(context.getStatus())) {
-                    continue;
-                }
-
-                context.lock();
-                uiService.showDialog(
-                        "Повторить?",
-                        () -> {
-                            try {
-                                PaymentStatus status = executeWithBaseHandling(client.getPaymentStatus(context.getId())).getStatus();
-                                context.setStatus(status);
-                            } catch (IOException ex) {
-                                pollStatus(context, function);
-                            } finally {
-                                context.unlock();
-                            }
-                        },
-                        () -> {
-                            context.getCallback().paymentNotCompleted();
-                            context.unlock();
-                        });
-            }
-        }
-        display.clear();
-        if (!context.getStatus().isSuccess()) {
-            uiService.showError(
-                    "Операция не успешна, статус " + context.getStatus(),
-                    () -> context.getCallback().paymentNotCompleted()
-            );
-        }
-    }
-
-    public void pollPaymentStatus(final Context context) {
-        pollStatus(context, client::getPaymentStatus);
-    }
-
-    public void pollReturnStatus(final Context context) {
-        pollStatus(context, client::getReturnStatus);
+    public PaymentStatus getStatus(Context context) throws IOException {
+        waitInterval();
+        return executeWithBaseHandling(client.getPaymentStatus(context.getId())).getStatus();
     }
 
     private boolean isNonExpired(PaymentStatus paymentStatus) {
         val now = currentTimeMillis();
         long fromStart = now - start.get();
-        switch (paymentStatus) {
+
+        logger.debug("Время " + fromStart / 1000);
+
+        switch (Optional.ofNullable(paymentStatus).orElse(PaymentStatus.UNKNOWN)) {
             case CREATED:
                 return fromStart < waitTimeout.get() * 1000;
             case WAIT:
@@ -168,6 +123,10 @@ public class KaspiQRPayService {
             default:
                 return fromStart < 180000;
         }
+    }
+
+    public boolean isNonExpired(Context context) {
+        return isNonExpired(context.getStatus());
     }
 
     private void waitInterval() {

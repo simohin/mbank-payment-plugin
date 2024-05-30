@@ -22,7 +22,7 @@ public class PaymentService extends SharedResourcesService {
     }
 
     private void doProcess(PaymentRequest request, BigDecimal amount) {
-        uiService.showSpinner("Выполняется запрос на сервер");
+        uiService.showSpinner("Выполняется запрос к процессингу Kaspi QR");
         setTransactionStart();
         setTransactionAmount(amount);
         setOperation(Operation.PAYMENT);

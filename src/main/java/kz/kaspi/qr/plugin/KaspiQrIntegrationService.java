@@ -10,6 +10,7 @@ import common.service.slip.SlipProperties;
 import kz.kaspi.qr.plugin.integration.Context;
 import kz.kaspi.qr.plugin.integration.KaspiQRPayService;
 import kz.kaspi.qr.plugin.integration.dto.PaymentDetails;
+import kz.kaspi.qr.plugin.integration.dto.PaymentStatus;
 import lombok.val;
 import org.slf4j.Logger;
 import ru.crystals.pos.api.events.ShiftEventListener;
@@ -27,11 +28,14 @@ import ru.crystals.pos.spi.plugin.payment.PaymentCallback;
 import ru.crystals.pos.spi.plugin.payment.PaymentRequest;
 import ru.crystals.pos.spi.plugin.payment.RefundRequest;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Optional;
 import java.util.UUID;
 
 import static common.config.LogConfig.getLogger;
+import static common.config.UIConfig.getUiService;
 import static common.service.slip.SlipService.buildSlip;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
@@ -75,34 +79,94 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
         val scaledAmount = new BigDecimal(amount).setScale(2, RoundingMode.HALF_UP);
         val payment = service.paymentCreate(token, scaledAmount, UUID.randomUUID().toString());
         showQr(payment, scaledAmount);
-        Context context = new Context(payment.getQrPaymentId(), paymentRequest.getPaymentCallback());
-        service.pollPaymentStatus(context);
-        val details = service.getDetails(payment.getQrPaymentId(), token);
-        processSuccess(paymentRequest.getPaymentCallback(), details);
+        val context = new Context(payment.getQrPaymentId(), paymentRequest.getPaymentCallback());
+        process(context);
+    }
+
+    private void process(Context context) {
+        if (service.isNonExpired(context)) {
+            processNextStep(context);
+        } else {
+            processExpired(context);
+        }
+    }
+
+    private void processNextStep(Context context) {
+
+        try {
+            context.setStatus(service.getStatus(context));
+        } catch (IOException e) {
+            process(context);
+            return;
+        }
+
+        switch (Optional.ofNullable(context.getStatus()).orElse(PaymentStatus.UNKNOWN)) {
+            case PROCESSED:
+                try {
+                    context.setDetails(service.getDetails(context.getId(), token));
+                } catch (Exception e) {
+                    logger.warn("Не удалось получить детали", e);
+                }
+                if (context.getDetails() != null) {
+                    processSuccess(context.getCallback(), context.getDetails());
+                    return;
+                }
+                processNextStep(context);
+                break;
+            case ERROR:
+                processFailed(context);
+                break;
+            case WAIT:
+                display.clear();
+            case UNKNOWN:
+            default:
+                process(context);
+        }
+
+    }
+
+    private void processFailed(Context context) {
+        getUiService().showError("Оплата не прошла", context.getCallback()::paymentNotCompleted);
+        display.clear();
+    }
+
+    private void processExpired(Context context) {
+        if (context.getStatus() == PaymentStatus.WAIT) {
+            getUiService().showDialog(
+                    "Произошла ошибка связи, проверьте, прошла ли операция на терминале?",
+                    () -> processNextStep(context),
+                    () -> {
+                        context.getCallback().paymentNotCompleted();
+                        display.clear();
+                    }
+            );
+            return;
+        }
+        processFailed(context);
     }
 
     private void showQr(kz.kaspi.qr.plugin.integration.dto.Payment payment, BigDecimal scaledAmount) {
-        val title = "Оплата по QR. PaymentId: ";
+        val title = "Сканируйте и платите через приложение Kaspi.kz";
 
         if (properties.isShowQrOnClientDisplay()) {
             display.clear();
-            display.display(new CustomerDisplayMessage(title + payment.getQrPaymentId(), payment.getQrToken(), scaledAmount));
+            display.display(new CustomerDisplayMessage(title, payment.getQrToken(), scaledAmount));
             logger.trace("slip showed for qr {}", payment.getQrToken());
         } else {
             val slip = new Slip();
             val paragraphs = slip.getParagraphs();
-            paragraphs.add(new SlipParagraph(SlipParagraphType.TEXT, title + payment.getQrPaymentId()));
+            paragraphs.add(new SlipParagraph(SlipParagraphType.TEXT, title));
             paragraphs.add(new SlipParagraph(SlipParagraphType.QR, payment.getQrToken()));
             try {
                 printer.print(slip);
             } catch (SetApiPrinterException e) {
                 throw new BaseError(e);
             }
-            logger.trace("slip printed for qr {}", payment.getQrToken());
         }
     }
 
     private void processSuccess(PaymentCallback callback, PaymentDetails details) {
+        display.clear();
 
         val date = details.getTransactionDate().format(ISO_OFFSET_DATE_TIME);
         val payment = new Payment();
@@ -136,9 +200,8 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
         val paymentId = refundRequest.getOriginalPayment().getData().get(PAYMENT_ID);
         val details = service.getDetails(paymentId, token);
         val returnId = service.returnCreate(token, details.getAvailableReturnAmount(), UUID.randomUUID().toString());
-        Context context = new Context(returnId, refundRequest.getPaymentCallback());
-        service.pollReturnStatus(context);
-        processSuccess(refundRequest.getPaymentCallback(), service.getDetails(returnId, token));
+        val context = new Context(returnId, refundRequest.getPaymentCallback());
+        process(context);
     }
 
     @Override

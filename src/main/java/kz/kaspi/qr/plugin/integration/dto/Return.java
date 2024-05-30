@@ -13,5 +13,5 @@ public class Return {
     private String qrReturnId;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
     private OffsetDateTime expireDate;
-    private ReturnBehaviourOptions qrPaymentBehaviorOptions;
+    private ReturnBehaviourOptions qrReturnBehaviorOptions;
 }

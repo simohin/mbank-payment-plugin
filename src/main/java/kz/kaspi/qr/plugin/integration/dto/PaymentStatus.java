@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum PaymentStatus {
+    @JsonProperty("Unknown")
+    UNKNOWN,
     @JsonProperty("QrTokenCreated")
     CREATED,
     @JsonProperty("Wait")
