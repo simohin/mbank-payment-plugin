@@ -6,6 +6,7 @@ import common.config.PluginConfigProperties;
 import common.config.PrinterConfig;
 import common.exception.BaseError;
 import common.service.BankIntegrationService;
+import common.service.UIService;
 import common.service.slip.SlipProperties;
 import kz.kaspi.qr.plugin.integration.Context;
 import kz.kaspi.qr.plugin.integration.KaspiQRPayService;
@@ -55,6 +56,7 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
     private final PluginConfigProperties properties = PluginConfig.getProperties();
     private final String token;
     private final String terminalId;
+    private final UIService uiService = getUiService();
 
     public KaspiQrIntegrationService() {
         val properties = PluginConfig.getProperties();
@@ -126,13 +128,13 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
     }
 
     private void processFailed(Context context) {
-        getUiService().showError("Оплата не прошла", context.getCallback()::paymentNotCompleted);
+        uiService.showError("Оплата не прошла", context.getCallback()::paymentNotCompleted);
         display.clear();
     }
 
     private void processExpired(Context context) {
         if (context.getStatus() == PaymentStatus.WAIT) {
-            getUiService().showDialog(
+            uiService.showDialog(
                     "Произошла ошибка связи, проверьте, прошла ли операция на терминале?",
                     () -> processNextStep(context),
                     () -> {

@@ -1,9 +1,7 @@
 package kz.kaspi.qr.plugin.integration;
 
-import common.config.CustomerDisplayConfig;
 import common.config.LogConfig;
 import common.exception.BaseError;
-import common.service.UIService;
 import kz.kaspi.qr.plugin.integration.config.ClientConfig;
 import kz.kaspi.qr.plugin.integration.dto.Create;
 import kz.kaspi.qr.plugin.integration.dto.DeviceRegistration;
@@ -18,7 +16,6 @@ import lombok.val;
 import org.slf4j.Logger;
 import retrofit2.Call;
 import retrofit2.Response;
-import ru.crystals.pos.spi.equipment.CustomerDisplay;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -27,7 +24,6 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.Optional;
 
-import static common.config.UIConfig.getUiService;
 import static java.lang.System.currentTimeMillis;
 
 public class KaspiQRPayService {
@@ -41,12 +37,9 @@ public class KaspiQRPayService {
     private final ThreadLocal<Long> confirmTimeout = new ThreadLocal<>();
     private final ThreadLocal<Long> returnLastPollCall = new ThreadLocal<>();
     private final ThreadLocal<OffsetDateTime> returnExpiration = new ThreadLocal<>();
-    private final ThreadLocal<Long> returnInterval = new ThreadLocal<>();
     private final ThreadLocal<Long> returnWaitTimeout = new ThreadLocal<>();
     private final ThreadLocal<Long> returnConfirmTimeout = new ThreadLocal<>();
-    private final CustomerDisplay display = CustomerDisplayConfig.getDisplay();
     private final Logger logger = LogConfig.getLogger();
-    private final UIService uiService = getUiService();
 
     public KaspiQRPayService() {
         val retrofit = ClientConfig.getInstance().getRetrofit();
@@ -96,9 +89,9 @@ public class KaspiQRPayService {
         returnLastPollCall.set(now);
         returnExpiration.set(qrReturn.getExpireDate());
         val behaviourOptions = qrReturn.getQrReturnBehaviorOptions();
-        returnInterval.set(5000L);
-        returnWaitTimeout.set(behaviourOptions.getQrCodeScanWaitTimeout());
-        returnConfirmTimeout.set(behaviourOptions.getQrCodeScanEventPollingInterval());
+        interval.set(behaviourOptions.getQrCodeScanEventPollingInterval());
+        confirmTimeout.set(180L);
+        waitTimeout.set(behaviourOptions.getQrCodeScanWaitTimeout());
 
         return qrReturn.getQrReturnId();
     }
