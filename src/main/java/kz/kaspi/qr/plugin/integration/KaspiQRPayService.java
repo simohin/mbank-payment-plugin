@@ -39,7 +39,6 @@ public class KaspiQRPayService {
     private final ThreadLocal<Long> interval = new ThreadLocal<>();
     private final ThreadLocal<Long> waitTimeout = new ThreadLocal<>();
     private final ThreadLocal<Long> confirmTimeout = new ThreadLocal<>();
-    private final ThreadLocal<Long> returnStart = new ThreadLocal<>();
     private final ThreadLocal<Long> returnLastPollCall = new ThreadLocal<>();
     private final ThreadLocal<OffsetDateTime> returnExpiration = new ThreadLocal<>();
     private final ThreadLocal<Long> returnInterval = new ThreadLocal<>();
@@ -93,7 +92,7 @@ public class KaspiQRPayService {
         val qrReturn = executeWithHandling(client.returnCreate(create));
 
         long now = currentTimeMillis();
-        returnStart.set(now);
+        start.set(now);
         returnLastPollCall.set(now);
         returnExpiration.set(qrReturn.getExpireDate());
         val behaviourOptions = qrReturn.getQrReturnBehaviorOptions();
