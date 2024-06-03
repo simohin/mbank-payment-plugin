@@ -1,7 +1,7 @@
 package common.service;
 
-import ru.crystals.pos.spi.plugin.payment.RefundRequest;
 import common.model.Operation;
+import ru.crystals.pos.spi.plugin.payment.RefundRequest;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -22,6 +22,7 @@ public class RefundService extends SharedResourcesService {
     }
 
     private void doProcess(RefundRequest request, BigDecimal amount) {
+        uiService.showSpinner("Выполняется запрос к процессингу Kaspi QR");
         setTransactionStart();
         setTransactionAmount(amount);
         setOperation(Operation.REFUND);

@@ -19,6 +19,7 @@ public class Context {
     private AtomicBoolean lock = new AtomicBoolean(false);
     private Logger log = LogConfig.getLogger();
     private PaymentDetails details;
+    private Type type = Type.PAYMENT;
 
     public void lock() {
         lock.set(true);
@@ -32,5 +33,10 @@ public class Context {
 
     public boolean isLocked() {
         return lock.get();
+    }
+
+    public enum Type {
+        PAYMENT,
+        RETURN
     }
 }

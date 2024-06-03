@@ -80,7 +80,7 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
     public void process(PaymentRequest paymentRequest, int amount) {
         val scaledAmount = new BigDecimal(amount).setScale(2, RoundingMode.HALF_UP);
         val payment = service.paymentCreate(token, scaledAmount, UUID.randomUUID().toString());
-        showQr(payment, scaledAmount);
+        showQr(payment.getQrToken(), scaledAmount);
         val context = new Context(payment.getQrPaymentId(), paymentRequest.getPaymentCallback());
         process(context);
     }
@@ -89,12 +89,13 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
         if (service.isNonExpired(context)) {
             processNextStep(context);
         } else {
+            display.clear();
             processExpired(context);
         }
     }
 
     private void processNextStep(Context context) {
-
+        uiService.showSpinner("Выполняется запрос к процессингу Kaspi QR");
         try {
             context.setStatus(service.getStatus(context));
         } catch (IOException e) {
@@ -128,37 +129,33 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
     }
 
     private void processFailed(Context context) {
-        uiService.showError("Оплата не прошла", context.getCallback()::paymentNotCompleted);
         display.clear();
+        uiService.showError("Оплата не прошла", context.getCallback()::paymentNotCompleted);
     }
 
     private void processExpired(Context context) {
-        if (context.getStatus() == PaymentStatus.WAIT) {
-            uiService.showDialog(
-                    "Произошла ошибка связи, проверьте, прошла ли операция на терминале?",
-                    () -> processNextStep(context),
-                    () -> {
-                        context.getCallback().paymentNotCompleted();
-                        display.clear();
-                    }
-            );
-            return;
-        }
-        processFailed(context);
+        uiService.showDialog(
+                "Произошла ошибка связи, проверьте, прошла ли операция на терминале?",
+                () -> processNextStep(context),
+                () -> {
+                    context.getCallback().paymentNotCompleted();
+                    display.clear();
+                }
+        );
     }
 
-    private void showQr(kz.kaspi.qr.plugin.integration.dto.Payment payment, BigDecimal scaledAmount) {
+    private void showQr(String paymentQrToken, BigDecimal scaledAmount) {
         val title = "Сканируйте и платите через приложение Kaspi.kz";
 
         if (properties.isShowQrOnClientDisplay()) {
             display.clear();
-            display.display(new CustomerDisplayMessage(title, payment.getQrToken(), scaledAmount));
-            logger.trace("slip showed for qr {}", payment.getQrToken());
+            display.display(new CustomerDisplayMessage(title, paymentQrToken, scaledAmount));
+            logger.trace("slip showed for qr {}", paymentQrToken);
         } else {
             val slip = new Slip();
             val paragraphs = slip.getParagraphs();
             paragraphs.add(new SlipParagraph(SlipParagraphType.TEXT, title));
-            paragraphs.add(new SlipParagraph(SlipParagraphType.QR, payment.getQrToken()));
+            paragraphs.add(new SlipParagraph(SlipParagraphType.QR, paymentQrToken));
             try {
                 printer.print(slip);
             } catch (SetApiPrinterException e) {
@@ -199,10 +196,14 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
 
     @Override
     public void process(RefundRequest refundRequest, int amount) {
+        val scaledAmount = new BigDecimal(amount).setScale(2, RoundingMode.HALF_UP);
         val paymentId = refundRequest.getOriginalPayment().getData().get(PAYMENT_ID);
         val details = service.getDetails(paymentId, token);
-        val returnId = service.returnCreate(token, details.getAvailableReturnAmount(), UUID.randomUUID().toString());
+        val returnDto = service.returnCreate(token, details.getAvailableReturnAmount(), UUID.randomUUID().toString());
+        val returnId = returnDto.getQrReturnId();
+        showQr(returnDto.getQrToken(), scaledAmount);
         val context = new Context(returnId, refundRequest.getPaymentCallback());
+        context.setType(Context.Type.RETURN);
         process(context);
     }
 

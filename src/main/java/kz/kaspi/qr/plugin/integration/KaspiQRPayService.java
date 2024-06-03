@@ -9,6 +9,7 @@ import kz.kaspi.qr.plugin.integration.dto.DeviceToken;
 import kz.kaspi.qr.plugin.integration.dto.Payment;
 import kz.kaspi.qr.plugin.integration.dto.PaymentDetails;
 import kz.kaspi.qr.plugin.integration.dto.PaymentStatus;
+import kz.kaspi.qr.plugin.integration.dto.Return;
 import kz.kaspi.qr.plugin.integration.dto.StatusCode;
 import kz.kaspi.qr.plugin.integration.dto.TradePoint;
 import kz.kaspi.qr.plugin.integration.dto.response.KaspiQRPayResponse;
@@ -28,6 +29,7 @@ import static java.lang.System.currentTimeMillis;
 
 public class KaspiQRPayService {
 
+    private static final long FIXED_DELAY = 5000;
     private final KaspiQRPayClient client;
     private final ThreadLocal<Long> start = new ThreadLocal<>();
     private final ThreadLocal<Long> lastPollCall = new ThreadLocal<>();
@@ -80,7 +82,7 @@ public class KaspiQRPayService {
         return qrPayment;
     }
 
-    public String returnCreate(String token, BigDecimal amount, String id) {
+    public Return returnCreate(String token, BigDecimal amount, String id) {
         val create = new Create(token, id, amount);
         val qrReturn = executeWithHandling(client.returnCreate(create));
 
@@ -93,17 +95,20 @@ public class KaspiQRPayService {
         confirmTimeout.set(180L);
         waitTimeout.set(behaviourOptions.getQrCodeScanWaitTimeout());
 
-        return qrReturn.getQrReturnId();
+        return qrReturn;
     }
 
     public PaymentStatus getStatus(Context context) throws IOException {
         waitInterval();
+        if (Objects.requireNonNull(context.getType()) == Context.Type.RETURN) {
+            return executeWithBaseHandling(client.getReturnStatus(context.getId())).getStatus();
+        }
         return executeWithBaseHandling(client.getPaymentStatus(context.getId())).getStatus();
     }
 
     private boolean isNonExpired(PaymentStatus paymentStatus) {
         val now = currentTimeMillis();
-        long fromStart = now - start.get();
+        long fromStart = now - start.get() + FIXED_DELAY;
 
         logger.debug("Время " + fromStart / 1000);
 

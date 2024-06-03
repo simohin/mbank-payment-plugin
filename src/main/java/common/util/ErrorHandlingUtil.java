@@ -19,6 +19,8 @@ import ru.crystals.pos.spi.ui.UIForms;
 import java.util.Collections;
 import java.util.Optional;
 
+import static common.config.CustomerDisplayConfig.getDisplay;
+
 public class ErrorHandlingUtil {
 
     public static final String BASE_ERROR_MESSAGE = "Ошибка";
@@ -39,7 +41,7 @@ public class ErrorHandlingUtil {
     public static void runWithHandling(Runnable action, PaymentCallback callback) {
         Logger logger = LogConfig.getLogger();
         UIForms ui = UIConfig.getUiForms();
-        CustomerDisplayConfig.getDisplay().clear();
+        getDisplay().clear();
         try {
             action.run();
         } catch (TerminalUnavailableError e) {
@@ -71,6 +73,7 @@ public class ErrorHandlingUtil {
         } catch (Exception e) {
             String message = (e instanceof BaseError) ? e.getMessage() : BASE_ERROR_MESSAGE;
             logger.error(message, e);
+            getDisplay().clear();
             ui.showErrorForm(message, callback::paymentNotCompleted);
         }
 
