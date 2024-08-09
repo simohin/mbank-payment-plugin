@@ -52,8 +52,13 @@ public class KaspiQrPaymentPlugin implements PaymentPlugin {
 
     @PostConstruct
     private void init() {
-        initSharedResources();
-        initServices();
+        try {
+            initSharedResources();
+            initServices();
+        } catch (Exception e) {
+            logger.debug("Failed to init", e);
+            throw e;
+        }
     }
 
     private void initSharedResources() {

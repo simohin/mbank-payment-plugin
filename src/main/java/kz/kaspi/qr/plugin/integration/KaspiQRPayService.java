@@ -1,7 +1,11 @@
 package kz.kaspi.qr.plugin.integration;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import common.config.LogConfig;
+import common.config.ObjectMapperConfig;
+import common.config.UIConfig;
 import common.exception.BaseError;
+import common.service.UIService;
 import kz.kaspi.qr.plugin.integration.config.ClientConfig;
 import kz.kaspi.qr.plugin.integration.dto.Create;
 import kz.kaspi.qr.plugin.integration.dto.DeviceRegistration;
@@ -25,6 +29,7 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.Optional;
 
+import static common.config.CustomerDisplayConfig.getDisplay;
 import static java.lang.System.currentTimeMillis;
 
 public class KaspiQRPayService {
@@ -39,9 +44,8 @@ public class KaspiQRPayService {
     private final ThreadLocal<Long> confirmTimeout = new ThreadLocal<>();
     private final ThreadLocal<Long> returnLastPollCall = new ThreadLocal<>();
     private final ThreadLocal<OffsetDateTime> returnExpiration = new ThreadLocal<>();
-    private final ThreadLocal<Long> returnWaitTimeout = new ThreadLocal<>();
-    private final ThreadLocal<Long> returnConfirmTimeout = new ThreadLocal<>();
     private final Logger logger = LogConfig.getLogger();
+    private final UIService uiService = UIConfig.getUiService();
 
     public KaspiQRPayService() {
         val retrofit = ClientConfig.getInstance().getRetrofit();
@@ -54,7 +58,37 @@ public class KaspiQRPayService {
 
     public String registerDevice(String tradePointId, String deviceId) {
         val deviceRegistration = new DeviceRegistration(tradePointId, deviceId);
-        return executeWithHandling(client.register(deviceRegistration)).getDeviceToken();
+
+        KaspiQRPayResponse<DeviceToken> response;
+        try {
+            response = executeWithBaseHandling(client.register(deviceRegistration));
+        } catch (IOException e) {
+            logger.error("Failed on request execution", e);
+            throw new BaseError(e);
+        }
+
+        val sc = Optional.ofNullable(response)
+                .map(KaspiQRPayResponse::getStatusCode)
+                .orElse(StatusCode.UNKNOWN);
+
+        if (!StatusCode.SUCCESS.equals(sc)) {
+            uiService.showError("Статус при регистрации устройства "+ sc, () -> {});
+            return null;
+        }
+
+
+        val deviceToken = Optional.ofNullable(response)
+                .map(KaspiQRPayResponse::getData)
+                .map(DeviceToken::getDeviceToken)
+                .orElse(null);
+
+
+        if (Objects.isNull(deviceToken)) {
+            uiService.showError("Не получен токен устройства"+ sc, () -> {});
+            return null;
+        }
+
+        return deviceToken;
     }
 
     public void deleteDevice(String token) {
@@ -98,17 +132,26 @@ public class KaspiQRPayService {
         return qrReturn;
     }
 
-    public PaymentStatus getStatus(Context context) throws IOException {
+    public void updateStatus(Context context) throws IOException {
         waitInterval();
-        if (Objects.requireNonNull(context.getType()) == Context.Type.RETURN) {
-            return executeWithBaseHandling(client.getReturnStatus(context.getId())).getStatus();
+        val call = Objects.requireNonNull(context.getType()) == Context.Type.RETURN
+                ? client.getReturnStatus(context.getId())
+                : client.getPaymentStatus(context.getId());
+
+        val response = executeWithBaseHandling(call);
+
+        if (!StatusCode.SUCCESS.equals(Objects.requireNonNull(response).getStatusCode())) {
+            context.setStatus(PaymentStatus.ERROR);
+            context.setMessage(response.getMessage());
         }
-        return executeWithBaseHandling(client.getPaymentStatus(context.getId())).getStatus();
+
+        Optional.ofNullable(response.getData())
+                .ifPresent(it -> context.setStatus(it.getStatus()));
     }
 
     private boolean isNonExpired(PaymentStatus paymentStatus) {
         val now = currentTimeMillis();
-        long fromStart = now - start.get() + FIXED_DELAY;
+        long fromStart = now - start.get() - FIXED_DELAY;
 
         logger.debug("Время " + fromStart / 1000);
 
@@ -142,27 +185,24 @@ public class KaspiQRPayService {
 
     private <T> T executeWithHandling(Call<? extends KaspiQRPayResponse<T>> call) {
         try {
-            return executeWithBaseHandling(call);
+            return executeWithBaseHandling(call).getData();
         } catch (IOException e) {
             logger.error("Failed on request execution", e);
             throw new BaseError(e);
         }
     }
 
-    private <T> T executeWithBaseHandling(Call<? extends KaspiQRPayResponse<T>> call) throws IOException {
+    private <T> KaspiQRPayResponse<T> executeWithBaseHandling(Call<? extends KaspiQRPayResponse<T>> call) throws IOException {
         lastPollCall.set(System.currentTimeMillis());
         Response<? extends KaspiQRPayResponse<T>> response = call.execute();
 
+        KaspiQRPayResponse<T> body = response.body();
         if (!response.isSuccessful()) {
-            logger.error("Failed on request execution. Code: {}, body {}", response.code(), response.body());
+            logger.error("Failed on request execution. Code: {}, body {}", response.code(), body);
             throw new BaseError(response.message());
         }
 
-        if (!StatusCode.SUCCESS.equals(Objects.requireNonNull(response.body()).getStatusCode())) {
-            throw new BaseError(response.body().getMessage());
-        }
-
-        return response.body().getData();
+        return body;
     }
 
 }

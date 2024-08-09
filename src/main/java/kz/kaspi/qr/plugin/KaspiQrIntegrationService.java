@@ -1,6 +1,5 @@
 package kz.kaspi.qr.plugin;
 
-import common.config.CustomerDisplayConfig;
 import common.config.PluginConfig;
 import common.config.PluginConfigProperties;
 import common.config.PrinterConfig;
@@ -35,6 +34,7 @@ import java.math.RoundingMode;
 import java.util.Optional;
 import java.util.UUID;
 
+import static common.config.CustomerDisplayConfig.getDisplay;
 import static common.config.LogConfig.getLogger;
 import static common.config.UIConfig.getUiService;
 import static common.service.slip.SlipService.buildSlip;
@@ -52,11 +52,11 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
     private final Logger logger = getLogger();
     private final KaspiQRPayService service = new KaspiQRPayService();
     private final SetApiPrinter printer = PrinterConfig.getPrinter();
-    private final CustomerDisplay display = CustomerDisplayConfig.getDisplay();
     private final PluginConfigProperties properties = PluginConfig.getProperties();
     private final String token;
     private final String terminalId;
     private final UIService uiService = getUiService();
+    private final CustomerDisplay display = getDisplay();
 
     public KaspiQrIntegrationService() {
         val properties = PluginConfig.getProperties();
@@ -89,15 +89,13 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
         if (service.isNonExpired(context)) {
             processNextStep(context);
         } else {
-            display.clear();
             processExpired(context);
         }
     }
 
     private void processNextStep(Context context) {
-        uiService.showSpinner("Выполняется запрос к процессингу Kaspi QR");
         try {
-            context.setStatus(service.getStatus(context));
+            service.updateStatus(context);
         } catch (IOException e) {
             process(context);
             return;
@@ -130,13 +128,20 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
 
     private void processFailed(Context context) {
         display.clear();
-        uiService.showError("Оплата не прошла", context.getCallback()::paymentNotCompleted);
+        uiService.showError(
+                Optional.ofNullable(context.getMessage()).orElse("Оплата не прошла"),
+                () -> context.getCallback().paymentNotCompleted()
+        );
     }
 
     private void processExpired(Context context) {
+        display.clear();
         uiService.showDialog(
                 "Произошла ошибка связи, проверьте, прошла ли операция на терминале?",
-                () -> processNextStep(context),
+                () -> {
+                    uiService.showSpinner("Выполняется запрос к процессингу Kaspi QR");
+                    processNextStep(context);
+                },
                 () -> {
                     context.getCallback().paymentNotCompleted();
                     display.clear();
