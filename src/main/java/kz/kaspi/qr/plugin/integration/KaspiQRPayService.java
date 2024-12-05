@@ -1,8 +1,6 @@
 package kz.kaspi.qr.plugin.integration;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import common.config.LogConfig;
-import common.config.ObjectMapperConfig;
 import common.config.UIConfig;
 import common.exception.BaseError;
 import common.service.UIService;
@@ -13,6 +11,7 @@ import kz.kaspi.qr.plugin.integration.dto.DeviceToken;
 import kz.kaspi.qr.plugin.integration.dto.Payment;
 import kz.kaspi.qr.plugin.integration.dto.PaymentDetails;
 import kz.kaspi.qr.plugin.integration.dto.PaymentStatus;
+import kz.kaspi.qr.plugin.integration.dto.PaymentStatusData;
 import kz.kaspi.qr.plugin.integration.dto.Return;
 import kz.kaspi.qr.plugin.integration.dto.StatusCode;
 import kz.kaspi.qr.plugin.integration.dto.TradePoint;
@@ -29,7 +28,6 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.Optional;
 
-import static common.config.CustomerDisplayConfig.getDisplay;
 import static java.lang.System.currentTimeMillis;
 
 public class KaspiQRPayService {
@@ -72,7 +70,8 @@ public class KaspiQRPayService {
                 .orElse(StatusCode.UNKNOWN);
 
         if (!StatusCode.SUCCESS.equals(sc)) {
-            uiService.showError("Статус при регистрации устройства "+ sc, () -> {});
+            uiService.showError("Статус при регистрации устройства " + sc, () -> {
+            });
             return null;
         }
 
@@ -84,7 +83,8 @@ public class KaspiQRPayService {
 
 
         if (Objects.isNull(deviceToken)) {
-            uiService.showError("Не получен токен устройства"+ sc, () -> {});
+            uiService.showError("Не получен токен устройства" + sc, () -> {
+            });
             return null;
         }
 
@@ -140,13 +140,14 @@ public class KaspiQRPayService {
 
         val response = executeWithBaseHandling(call);
 
+        Optional.ofNullable(response.getData())
+                .ifPresent(context::setStatusData);
+
         if (!StatusCode.SUCCESS.equals(Objects.requireNonNull(response).getStatusCode())) {
-            context.setStatus(PaymentStatus.ERROR);
+            context.getStatusData().setStatus(PaymentStatus.ERROR);
             context.setMessage(response.getMessage());
         }
 
-        Optional.ofNullable(response.getData())
-                .ifPresent(it -> context.setStatus(it.getStatus()));
     }
 
     private boolean isNonExpired(PaymentStatus paymentStatus) {
@@ -166,7 +167,10 @@ public class KaspiQRPayService {
     }
 
     public boolean isNonExpired(Context context) {
-        return isNonExpired(context.getStatus());
+        return isNonExpired(Optional.ofNullable(context)
+                .map(Context::getStatusData)
+                .map(PaymentStatusData::getStatus)
+                .orElse(PaymentStatus.UNKNOWN));
     }
 
     private void waitInterval() {

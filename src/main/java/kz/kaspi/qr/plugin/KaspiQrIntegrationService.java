@@ -11,6 +11,7 @@ import kz.kaspi.qr.plugin.integration.Context;
 import kz.kaspi.qr.plugin.integration.KaspiQRPayService;
 import kz.kaspi.qr.plugin.integration.dto.PaymentDetails;
 import kz.kaspi.qr.plugin.integration.dto.PaymentStatus;
+import kz.kaspi.qr.plugin.integration.dto.PaymentStatusData;
 import lombok.val;
 import org.slf4j.Logger;
 import ru.crystals.pos.api.events.ShiftEventListener;
@@ -48,6 +49,13 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
     public static final String TRANSACTION_DATE = "kaspi.qr.transaction.date";
     public static final String BANK_ID = "kaspi.qr.bank.id";
     public static final String PAYMENT_METHOD = "kaspi.qr.payment.method";
+    public static final String ADDRESS = "kaspi.qr.payment.address";
+    public static final String CITY = "kaspi.qr.payment.city";
+    public static final String STORE_NAME = "kaspi.qr.payment.store.name";
+    public static final String LOAN_OFFER_NAME = "kaspi.qr.payment.loan.offer.name";
+    public static final String LOAN_TERM = "kaspi.qr.payment.loan.term";
+    public static final String IS_OFFER = "kaspi.qr.payment.is.offer";
+    public static final String PRODUCT_TYPE = "kaspi.qr.payment.product.type";
     public static final String METHOD = "Kaspi QR";
     private final Logger logger = getLogger();
     private final KaspiQRPayService service = new KaspiQRPayService();
@@ -101,15 +109,15 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
             return;
         }
 
-        switch (Optional.ofNullable(context.getStatus()).orElse(PaymentStatus.UNKNOWN)) {
+        switch (Optional.ofNullable(context.getStatusData().getStatus()).orElse(PaymentStatus.UNKNOWN)) {
             case PROCESSED:
                 try {
                     context.setDetails(service.getDetails(context.getId(), token));
                 } catch (Exception e) {
                     logger.warn("Не удалось получить детали", e);
                 }
-                if (context.getDetails() != null) {
-                    processSuccess(context.getCallback(), context.getDetails());
+                if (context.getDetails() != null && context.getStatusData() != null) {
+                    processSuccess(context.getCallback(), context.getDetails(), context.getStatusData());
                     return;
                 }
                 processNextStep(context);
@@ -169,7 +177,7 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
         }
     }
 
-    private void processSuccess(PaymentCallback callback, PaymentDetails details) {
+    private void processSuccess(PaymentCallback callback, PaymentDetails details, PaymentStatusData statusData) {
         display.clear();
 
         val date = details.getTransactionDate().format(ISO_OFFSET_DATE_TIME);
@@ -182,15 +190,26 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
         data.put(TRANSACTION_DATE, date);
         data.put(BANK_ID, KASPI_QR_BANK_ID);
         data.put(PAYMENT_METHOD, METHOD);
+        data.put(ADDRESS, statusData.getAddress());
+        data.put(CITY, statusData.getCity());
+        data.put(STORE_NAME, statusData.getStoreName());
+        data.put(LOAN_OFFER_NAME, statusData.getLoanOfferName());
+        data.put(IS_OFFER, statusData.getIsOffer().toString());
+        data.put(LOAN_TERM, statusData.getLoanTerm());
+        data.put(PRODUCT_TYPE, statusData.getProductType());
 
         val slips = payment.getSlips();
-        slips.add(
-                buildSlip(new SlipProperties(
-                        METHOD,
-                        terminalId,
-                        date,
-                        amount.setScale(2, RoundingMode.HALF_UP).toPlainString()
-                )));
+        SlipProperties slipProperties = new SlipProperties(
+                METHOD,
+                terminalId,
+                date,
+                amount.setScale(2, RoundingMode.HALF_UP).toPlainString()
+        );
+        slipProperties.setAddress(statusData.getAddress());
+        slipProperties.setCity(statusData.getCity());
+        slipProperties.setStoreName(statusData.getStoreName());
+
+        slips.add(buildSlip(slipProperties));
 
         try {
             callback.paymentCompleted(payment);

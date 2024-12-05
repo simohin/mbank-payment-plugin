@@ -10,15 +10,30 @@
         </Options>
         <PaymentPlugin paymentType="ELECTRONIC" localeKey="kaspi.qr.plugin.name" id="kaspi.qr.payment.plugin">
             <Description>Kaspi QR</Description>
-            <PersistedField key="kaspi.qr.payment.id" localeKey="payment.id.field.name" exportable="true"
+            <PersistedField key="kaspi.qr.payment.id" localeKey="kaspi.qr.payment.id.field.name" exportable="true"
                             visible="true"/>
-            <PersistedField key="kaspi.qr.terminal.number" localeKey="terminal.no.field.name" exportable="true"
+            <PersistedField key="kaspi.qr.terminal.number" localeKey="kaspi.qr.terminal.no.field.name" exportable="true"
                             visible="true"/>
-            <PersistedField key="kaspi.qr.transaction.date" localeKey="transaction.date.field.name" exportable="true"
+            <PersistedField key="kaspi.qr.transaction.date" localeKey="kaspi.qr.transaction.date.field.name"
+                            exportable="true"
                             visible="true"/>
-            <PersistedField key="kaspi.qr.bank.id" localeKey="bank.id.field.name" exportable="true" visible="true"/>
-            <PersistedField key="kaspi.qr.payment.method" localeKey="payment.method.field.name" exportable="true"
+            <PersistedField key="kaspi.qr.bank.id" localeKey="kaspi.qr.bank.id.field.name" exportable="true"
                             visible="true"/>
+            <PersistedField key="kaspi.qr.payment.method" localeKey="kaspi.qr.payment.method.field.name"
+                            exportable="true"
+                            visible="true"/>
+            <PersistedField key="kaspi.qr.payment.address" localeKey="kaspi.qr.payment.address.field.name"
+                            exportable="true" visible="true"/>
+            <PersistedField key="kaspi.qr.payment.city" localeKey="kaspi.qr.payment.city.field.name" exportable="true"
+                            visible="true"/>
+            <PersistedField key="kaspi.qr.payment.store.name" localeKey="kaspi.qr.payment.store.name.field.name"
+                            exportable="true" visible="true"/>
+            <PersistedField key="kaspi.qr.payment.loan.offer.name" localeKey="kaspi.qr.payment.loan.term.field.name"
+                            exportable="true" visible="true"/>
+            <PersistedField key="kaspi.qr.payment.loan.term" localeKey="kaspi.qr.payment.loan.offer.name"
+                            exportable="true" visible="true"/>
+            <PersistedField key="kaspi.qr.payment.is.offer" localeKey="kaspi.qr.payment.is.offer.field.name"
+                            exportable="true" visible="true"/>
         </PaymentPlugin>
     </ExternalService>
 </SetIntegration>

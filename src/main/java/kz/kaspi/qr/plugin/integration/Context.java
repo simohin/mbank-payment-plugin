@@ -2,7 +2,7 @@ package kz.kaspi.qr.plugin.integration;
 
 import common.config.LogConfig;
 import kz.kaspi.qr.plugin.integration.dto.PaymentDetails;
-import kz.kaspi.qr.plugin.integration.dto.PaymentStatus;
+import kz.kaspi.qr.plugin.integration.dto.PaymentStatusData;
 import lombok.Data;
 import org.slf4j.Logger;
 import ru.crystals.pos.spi.plugin.payment.PaymentCallback;
@@ -14,11 +14,11 @@ public class Context {
 
     private final String id;
     private final PaymentCallback callback;
-    private PaymentStatus status;
     private String message;
     private AtomicBoolean lock = new AtomicBoolean(false);
     private Logger log = LogConfig.getLogger();
     private PaymentDetails details;
+    private PaymentStatusData statusData;
     private Type type = Type.PAYMENT;
 
     public void lock() {

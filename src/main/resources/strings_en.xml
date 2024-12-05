@@ -27,6 +27,12 @@
     <entry key="kaspi.qr.transaction.date.field.name">Transaction date</entry>
     <entry key="kaspi.qr.bank.id.field.name">Bank ID</entry>
     <entry key="kaspi.qr.payment.method.field.name">Payment Method</entry>
+    <entry key="kaspi.qr.payment.address.field.name">Address</entry>
+    <entry key="kaspi.qr.payment.city.field.name">City</entry>
+    <entry key="kaspi.qr.payment.store.name.field.name">Store name</entry>
+    <entry key="kaspi.qr.payment.loan.term.field.name">Loan term</entry>
+    <entry key="kaspi.qr.payment.loan.offer.name">Loan offer name</entry>
+    <entry key="kaspi.qr.payment.is.offer.field.name">Is offer</entry>
 
     <!-- For refund -->
 

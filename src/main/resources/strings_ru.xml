@@ -26,4 +26,10 @@
     <entry key="kaspi.qr.transaction.date.field.name">Дата и время транзакции</entry>
     <entry key="kaspi.qr.bank.id.field.name">Идентификатор банка</entry>
     <entry key="kaspi.qr.payment.method.field.name">Метод оплаты</entry>
+    <entry key="kaspi.qr.payment.address.field.name">Адрес</entry>
+    <entry key="kaspi.qr.payment.city.field.name">Город</entry>
+    <entry key="kaspi.qr.payment.store.name.field.name">Магазин</entry>
+    <entry key="kaspi.qr.payment.loan.term.field.name">Условия предложения</entry>
+    <entry key="kaspi.qr.payment.loan.offer.name">Название предложения</entry>
+    <entry key="kaspi.qr.payment.is.offer.field.name">Признак специального предложения</entry>
 </properties>
