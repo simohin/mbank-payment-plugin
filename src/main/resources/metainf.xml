@@ -12,6 +12,8 @@
             <Description>Kaspi QR</Description>
             <PersistedField key="kaspi.qr.payment.id" localeKey="kaspi.qr.payment.id.field.name" exportable="true"
                             visible="true"/>
+            <PersistedField key="kaspi.qr.payment.amount" localeKey="kaspi.qr.payment.amount.field.name" exportable="true"
+                            visible="true"/>
             <PersistedField key="kaspi.qr.terminal.number" localeKey="kaspi.qr.terminal.no.field.name" exportable="true"
                             visible="true"/>
             <PersistedField key="kaspi.qr.transaction.date" localeKey="kaspi.qr.transaction.date.field.name"

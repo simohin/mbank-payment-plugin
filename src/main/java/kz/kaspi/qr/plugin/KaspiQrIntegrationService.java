@@ -32,6 +32,7 @@ import ru.crystals.pos.spi.plugin.payment.RefundRequest;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,6 +46,7 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
 
     public static final String KASPI_QR_BANK_ID = "KASPIQR";
     public static final String PAYMENT_ID = "kaspi.qr.payment.id";
+    public static final String AMOUNT = "kaspi.qr.payment.amount";
     public static final String TERMINAL_NUMBER = "kaspi.qr.terminal.number";
     public static final String TRANSACTION_DATE = "kaspi.qr.transaction.date";
     public static final String BANK_ID = "kaspi.qr.bank.id";
@@ -186,17 +188,21 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
         payment.setSum(amount);
         val data = payment.getData();
         data.put(PAYMENT_ID, details.getQrPaymentId());
+        data.put(AMOUNT, amount.setScale(2, RoundingMode.DOWN).toPlainString());
         data.put(TERMINAL_NUMBER, terminalId);
         data.put(TRANSACTION_DATE, date);
         data.put(BANK_ID, KASPI_QR_BANK_ID);
         data.put(PAYMENT_METHOD, METHOD);
-        data.put(ADDRESS, statusData.getAddress());
-        data.put(CITY, statusData.getCity());
-        data.put(STORE_NAME, statusData.getStoreName());
-        data.put(LOAN_OFFER_NAME, statusData.getLoanOfferName());
-        data.put(IS_OFFER, statusData.getIsOffer().toString());
-        data.put(LOAN_TERM, statusData.getLoanTerm());
-        data.put(PRODUCT_TYPE, statusData.getProductType());
+
+        if (Objects.nonNull(statusData)) {
+            Optional.ofNullable(statusData.getAddress()).ifPresent(it -> data.put(ADDRESS, it));
+            Optional.ofNullable(statusData.getCity()).ifPresent(it -> data.put(CITY, it));
+            Optional.ofNullable(statusData.getStoreName()).ifPresent(it -> data.put(STORE_NAME, it));
+            Optional.ofNullable(statusData.getLoanTerm()).ifPresent(it -> data.put(LOAN_OFFER_NAME, it));
+            Optional.ofNullable(statusData.getIsOffer()).ifPresent(it -> data.put(IS_OFFER, it.toString()));
+            Optional.ofNullable(statusData.getLoanTerm()).ifPresent(it -> data.put(LOAN_TERM, it));
+            Optional.ofNullable(statusData.getProductType()).ifPresent(it -> data.put(PRODUCT_TYPE, it));
+        }
 
         val slips = payment.getSlips();
         SlipProperties slipProperties = new SlipProperties(

@@ -23,6 +23,7 @@
     <!-- For slip -->
 
     <entry key="kaspi.qr.payment.id.field.name">Transaction number</entry>
+    <entry key="kaspi.qr.payment.amount.field.name">Amount</entry>
     <entry key="kaspi.qr.terminal.no.field.name">Terminal number</entry>
     <entry key="kaspi.qr.transaction.date.field.name">Transaction date</entry>
     <entry key="kaspi.qr.bank.id.field.name">Bank ID</entry>

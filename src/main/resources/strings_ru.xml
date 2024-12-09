@@ -22,6 +22,7 @@
 
     <!-- For slip -->
     <entry key="kaspi.qr.payment.id.field.name">Номер транзакции</entry>
+    <entry key="kaspi.qr.payment.amount.field.name">Сумма операции</entry>
     <entry key="kaspi.qr.terminal.no.field.name">Номер терминала</entry>
     <entry key="kaspi.qr.transaction.date.field.name">Дата и время транзакции</entry>
     <entry key="kaspi.qr.bank.id.field.name">Идентификатор банка</entry>
