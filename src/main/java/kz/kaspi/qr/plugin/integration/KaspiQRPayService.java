@@ -34,6 +34,7 @@ public class KaspiQRPayService {
 
     private static final long FIXED_DELAY = 5000;
     private final KaspiQRPayClient client;
+    private final KaspiQRPayClient clientV2;
     private final ThreadLocal<Long> start = new ThreadLocal<>();
     private final ThreadLocal<Long> lastPollCall = new ThreadLocal<>();
     private final ThreadLocal<OffsetDateTime> expiration = new ThreadLocal<>();
@@ -47,7 +48,9 @@ public class KaspiQRPayService {
 
     public KaspiQRPayService() {
         val retrofit = ClientConfig.getInstance().getRetrofit();
+        val retrofitV2 = ClientConfig.getInstanceV2().getRetrofit();
         client = retrofit.create(KaspiQRPayClient.class);
+        clientV2 = retrofitV2.create(KaspiQRPayClient.class);
     }
 
     public Collection<TradePoint> getTradePoints() {
@@ -136,7 +139,7 @@ public class KaspiQRPayService {
         waitInterval();
         val call = Objects.requireNonNull(context.getType()) == Context.Type.RETURN
                 ? client.getReturnStatus(context.getId())
-                : client.getPaymentStatus(context.getId());
+                : clientV2.getPaymentStatus(context.getId());
 
         val response = executeWithBaseHandling(call);
 

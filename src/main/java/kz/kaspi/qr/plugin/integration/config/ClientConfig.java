@@ -45,6 +45,7 @@ public class ClientConfig {
     public static final String X_509 = "X.509";
     private static final String PROTOCOL = "TLS";
     private static ClientConfig INSTANCE;
+    private static ClientConfig INSTANCE_V2;
     public final String baseUrl;
     @Getter
     private final Retrofit retrofit;
@@ -71,10 +72,16 @@ public class ClientConfig {
         val ca = Paths.get(properties.getCaPath()).toFile();
         val cert = Paths.get(properties.getCertPath()).toFile();
 
-
         if (Objects.isNull(INSTANCE)) {
             INSTANCE = new ClientConfig(
                     properties.getIp() + "/r2/v01/",
+                    rootCa,
+                    ca,
+                    cert,
+                    properties.getCertPassword()
+            );
+            INSTANCE_V2 = new ClientConfig(
+                    properties.getIp() + "/r2/v02/",
                     rootCa,
                     ca,
                     cert,
@@ -88,6 +95,13 @@ public class ClientConfig {
             throw new IllegalStateException("Not initialized");
         }
         return INSTANCE;
+    }
+
+    public static ClientConfig getInstanceV2() {
+        if (Objects.isNull(INSTANCE_V2)) {
+            throw new IllegalStateException("Not initialized");
+        }
+        return INSTANCE_V2;
     }
 
     private static ObjectMapper getObjectMapper() {

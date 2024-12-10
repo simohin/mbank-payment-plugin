@@ -41,9 +41,7 @@ public class SlipService {
         parameters.put(provider.orderNumber(), info.getOrderNumber());
         parameters.put(provider.cardMask(), info.getCardMask());
         parameters.put(provider.icc(), info.getIcc());
-        String[] amount = info.getAmount().split(" ");
-        amount[amount.length - 1] = "тнг";
-        parameters.put(provider.amount(), String.join(" ", amount));
+        parameters.put(provider.amount(), String.format("%s тнг", info.getAmount()));
         parameters.put(provider.status(), info.getStatus());
         parameters.put(provider.hostResponseCode(), info.getHostResponseCode());
 
