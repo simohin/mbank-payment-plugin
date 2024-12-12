@@ -136,6 +136,7 @@ public class KaspiQRPayService {
     }
 
     public void updateStatus(Context context) throws IOException {
+        logger.trace("Updating status for context: {}", context);
         waitInterval();
         val call = Objects.requireNonNull(context.getType()) == Context.Type.RETURN
                 ? client.getReturnStatus(context.getId())
@@ -143,14 +144,17 @@ public class KaspiQRPayService {
 
         val response = executeWithBaseHandling(call);
 
-        Optional.ofNullable(response.getData())
-                .ifPresent(context::setStatusData);
-
-        if (!StatusCode.SUCCESS.equals(Objects.requireNonNull(response).getStatusCode())) {
-            context.getStatusData().setStatus(PaymentStatus.ERROR);
-            context.setMessage(response.getMessage());
+        if (response.getStatusCode() != StatusCode.SUCCESS) {
+            String message = String.format("Update status failed. Error code: %s %s", response.getStatusCode(), response.getStatusCode().getCode());
+            logger.error(message);
+            PaymentStatusData paymentStatusData = Optional.ofNullable(context.getStatusData()).orElse(new PaymentStatusData());
+            paymentStatusData.setStatus(PaymentStatus.ERROR);
+            context.setStatusData(paymentStatusData);
+            context.setMessage(message);
+        } else {
+            Optional.ofNullable(response.getData())
+                    .ifPresent(context::setStatusData);
         }
-
     }
 
     private boolean isNonExpired(PaymentStatus paymentStatus) {

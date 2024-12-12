@@ -6,7 +6,6 @@ import ru.crystals.pos.api.ui.listener.ConfirmListener;
 import ru.crystals.pos.api.ui.listener.DialogListener;
 import ru.crystals.pos.api.ui.listener.SumToPayFormListener;
 import ru.crystals.pos.spi.ResBundle;
-import ru.crystals.pos.spi.plugin.payment.CancelRequest;
 import ru.crystals.pos.spi.plugin.payment.PaymentCallback;
 import ru.crystals.pos.spi.plugin.payment.PaymentRequest;
 import ru.crystals.pos.spi.plugin.payment.RefundRequest;
@@ -32,10 +31,6 @@ public class UIService {
     }
 
     public void showSumEnterForm(PaymentRequest request, Consumer<BigDecimal> amountConsumer, boolean activeSumEnter) {
-        showSumEnterForm(request.getReceipt(), request.getReceipt().getSurchargeSum(), amountConsumer, request.getPaymentCallback(), activeSumEnter);
-    }
-
-    public void showSumEnterForm(CancelRequest request, Consumer<BigDecimal> amountConsumer, boolean activeSumEnter) {
         showSumEnterForm(request.getReceipt(), request.getReceipt().getSurchargeSum(), amountConsumer, request.getPaymentCallback(), activeSumEnter);
     }
 

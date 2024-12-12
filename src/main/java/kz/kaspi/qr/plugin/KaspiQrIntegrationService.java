@@ -32,6 +32,7 @@ import ru.crystals.pos.spi.plugin.payment.RefundRequest;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -95,26 +96,60 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
         process(context);
     }
 
+
+    @Override
+    public void process(RefundRequest refundRequest, int amount) {
+        logger.trace("Start processing refund request {}", refundRequest);
+        val scaledAmount = new BigDecimal(amount).setScale(2, RoundingMode.HALF_UP);
+        val paymentId = refundRequest.getOriginalPayment().getData().get(PAYMENT_ID);
+        val details = service.getDetails(paymentId, token);
+        val returnDto = service.returnCreate(token, details.getAvailableReturnAmount(), UUID.randomUUID().toString());
+        val returnId = returnDto.getQrReturnId();
+        showQr(returnDto.getQrToken(), scaledAmount);
+        val context = new Context(returnId, refundRequest.getPaymentCallback());
+        context.setType(Context.Type.RETURN);
+        process(context);
+    }
+
+    @Override
+    public void process(CancelRequest cancelRequest, int amount) {
+        throw new UnsupportedOperationException("Cancel is not implemented");
+    }
+
     private void process(Context context) {
         if (service.isNonExpired(context)) {
+            logger.trace("Context is not expired: {}", context);
             processNextStep(context);
         } else {
+            logger.trace("Context is expired: {}", context);
             processExpired(context);
         }
     }
 
     private void processNextStep(Context context) {
-        try {
-            service.updateStatus(context);
-        } catch (IOException e) {
-            process(context);
-            return;
+        logger.trace("Processing next step: {}", context);
+        PaymentStatus paymentStatus = Optional.ofNullable(context)
+                .map(Context::getStatusData)
+                .map(PaymentStatusData::getStatus)
+                .orElse(PaymentStatus.UNKNOWN);
+        if (paymentStatus.isNonFinal()) {
+            try {
+                service.updateStatus(context);
+                logger.trace("Status updated: {}", context);
+            } catch (IOException e) {
+                logger.error(e.getMessage(), e);
+                process(context);
+                return;
+            }
         }
+        logger.trace("Processing status: {}", paymentStatus);
 
-        switch (Optional.ofNullable(context.getStatusData().getStatus()).orElse(PaymentStatus.UNKNOWN)) {
+        switch (paymentStatus) {
             case PROCESSED:
                 try {
-                    context.setDetails(service.getDetails(context.getId(), token));
+                    PaymentDetails details = service.getDetails(context.getId(), token);
+                    context.setDetails(details);
+                    logger.trace("Got details: {}", details);
                 } catch (Exception e) {
                     logger.warn("Не удалось получить детали", e);
                 }
@@ -123,12 +158,18 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
                     return;
                 }
                 processNextStep(context);
-                break;
+                return;
             case ERROR:
                 processFailed(context);
-                break;
+                return;
             case WAIT:
-                display.clear();
+                Optional.ofNullable(context.getPreviousStatusData())
+                        .filter(it -> !PaymentStatus.WAIT.equals(it.getStatus()))
+                        .ifPresent(it -> {
+                            uiService.showSpinner("Ожидание подтверждения");
+                            display.clear();
+                            display.display(new CustomerDisplayMessage("Ожидание подтверждения", Duration.ofMinutes(1)));
+                        });
             case UNKNOWN:
             default:
                 process(context);
@@ -140,7 +181,11 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
         display.clear();
         uiService.showError(
                 Optional.ofNullable(context.getMessage()).orElse("Оплата не прошла"),
-                () -> context.getCallback().paymentNotCompleted()
+                () -> {
+                    logger.trace("Processing failed: {}", context);
+                    context.getCallback().paymentNotCompleted();
+                    logger.trace("Processing failed - callback triggered");
+                }
         );
     }
 
@@ -222,23 +267,5 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
         } catch (InvalidPaymentException e) {
             throw new BaseError(e);
         }
-    }
-
-    @Override
-    public void process(RefundRequest refundRequest, int amount) {
-        val scaledAmount = new BigDecimal(amount).setScale(2, RoundingMode.HALF_UP);
-        val paymentId = refundRequest.getOriginalPayment().getData().get(PAYMENT_ID);
-        val details = service.getDetails(paymentId, token);
-        val returnDto = service.returnCreate(token, details.getAvailableReturnAmount(), UUID.randomUUID().toString());
-        val returnId = returnDto.getQrReturnId();
-        showQr(returnDto.getQrToken(), scaledAmount);
-        val context = new Context(returnId, refundRequest.getPaymentCallback());
-        context.setType(Context.Type.RETURN);
-        process(context);
-    }
-
-    @Override
-    public void process(CancelRequest cancelRequest, int amount) {
-        throw new UnsupportedOperationException("Cancel is not implemented");
     }
 }

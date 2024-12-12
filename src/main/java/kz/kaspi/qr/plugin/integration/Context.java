@@ -19,7 +19,13 @@ public class Context {
     private Logger log = LogConfig.getLogger();
     private PaymentDetails details;
     private PaymentStatusData statusData;
+    private PaymentStatusData previousStatusData;
     private Type type = Type.PAYMENT;
+
+    public void setStatusData(PaymentStatusData statusData) {
+        previousStatusData = this.statusData;
+        this.statusData = statusData;
+    }
 
     public void lock() {
         lock.set(true);
