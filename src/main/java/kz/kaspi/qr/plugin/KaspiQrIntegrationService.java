@@ -128,14 +128,19 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
 
     private void processNextStep(Context context) {
         logger.trace("Processing next step: {}", context);
-        PaymentStatus paymentStatus = Optional.ofNullable(context)
-                .map(Context::getStatusData)
-                .map(PaymentStatusData::getStatus)
-                .orElse(PaymentStatus.UNKNOWN);
+
+        if (Objects.isNull(context)) {
+            logger.error("Context is null!");
+            return;
+        }
+
+        PaymentStatus paymentStatus = context.getStatus();
+
         if (paymentStatus.isNonFinal()) {
             try {
                 service.updateStatus(context);
                 logger.trace("Status updated: {}", context);
+                paymentStatus = context.getStatus();
             } catch (IOException e) {
                 logger.error(e.getMessage(), e);
                 process(context);
@@ -163,18 +168,20 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
                 processFailed(context);
                 return;
             case WAIT:
-                Optional.ofNullable(context.getPreviousStatusData())
-                        .filter(it -> !PaymentStatus.WAIT.equals(it.getStatus()))
-                        .ifPresent(it -> {
-                            uiService.showSpinner("Ожидание подтверждения");
-                            display.clear();
-                            display.display(new CustomerDisplayMessage("Ожидание подтверждения", Duration.ofMinutes(1)));
-                        });
+                if (!context.checkIsStatusProcessed(PaymentStatus.WAIT)) {
+                    logger.trace("Wait status not processed: {}", context);
+                    uiService.showSpinner("Ожидание подтверждения");
+                    display.clear();
+                    display.display(new CustomerDisplayMessage("Ожидание подтверждения", Duration.ofMinutes(1)));
+                } else {
+                    logger.trace("Wait status already processed: {}", context);
+                }
             case UNKNOWN:
             default:
                 process(context);
         }
-
+        PaymentStatus finalPaymentStatus = paymentStatus;
+        context.addProcessedStatus(finalPaymentStatus);
     }
 
     private void processFailed(Context context) {

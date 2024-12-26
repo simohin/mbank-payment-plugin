@@ -3,6 +3,7 @@ package kz.kaspi.qr.plugin.integration;
 import kz.kaspi.qr.plugin.integration.dto.Create;
 import kz.kaspi.qr.plugin.integration.dto.DeviceRegistration;
 import kz.kaspi.qr.plugin.integration.dto.DeviceToken;
+import kz.kaspi.qr.plugin.integration.dto.PaymentCreate;
 import kz.kaspi.qr.plugin.integration.dto.response.DeleteDeviceResponse;
 import kz.kaspi.qr.plugin.integration.dto.response.DeviceTokenResponse;
 import kz.kaspi.qr.plugin.integration.dto.response.PaymentCreateLinkResponse;
@@ -29,10 +30,10 @@ public interface KaspiQRPayClient {
     Call<DeleteDeviceResponse> delete(@Body DeviceToken token);
 
     @POST("qr/create")
-    Call<PaymentCreateResponse> paymentCreate(@Body Create create);
+    Call<PaymentCreateResponse> paymentCreate(@Body PaymentCreate create);
 
     @POST("qr/create-link")
-    Call<PaymentCreateLinkResponse> paymentLinkCreate(@Body Create create);
+    Call<PaymentCreateLinkResponse> paymentLinkCreate(@Body PaymentCreate create);
 
     @POST("return/create")
     Call<ReturnCreateResponse> returnCreate(@Body Create create);

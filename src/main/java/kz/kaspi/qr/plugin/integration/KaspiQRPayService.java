@@ -9,6 +9,7 @@ import kz.kaspi.qr.plugin.integration.dto.Create;
 import kz.kaspi.qr.plugin.integration.dto.DeviceRegistration;
 import kz.kaspi.qr.plugin.integration.dto.DeviceToken;
 import kz.kaspi.qr.plugin.integration.dto.Payment;
+import kz.kaspi.qr.plugin.integration.dto.PaymentCreate;
 import kz.kaspi.qr.plugin.integration.dto.PaymentDetails;
 import kz.kaspi.qr.plugin.integration.dto.PaymentStatus;
 import kz.kaspi.qr.plugin.integration.dto.PaymentStatusData;
@@ -104,7 +105,7 @@ public class KaspiQRPayService {
     }
 
     public Payment paymentCreate(String token, BigDecimal amount, String id) {
-        val qrCreate = new Create(token, id, amount);
+        val qrCreate = new PaymentCreate(token, id, amount);
         val qrPayment = executeWithHandling(client.paymentCreate(qrCreate));
 
         long now = currentTimeMillis();
@@ -120,7 +121,7 @@ public class KaspiQRPayService {
     }
 
     public Return returnCreate(String token, BigDecimal amount, String id) {
-        val create = new Create(token, id, amount);
+        val create = new Create(token, id);
         val qrReturn = executeWithHandling(client.returnCreate(create));
 
         long now = currentTimeMillis();
