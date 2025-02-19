@@ -26,8 +26,8 @@ public class UIService {
     private static final String ENTER_SUM_TO_PAY = resBundle.getString("enter.sum.to.pay");
     public static final String CAPTION = resBundle.getString("plugin.name");
 
-    public void showSpinner(String key) {
-        ui.showSpinnerForm(resBundle.getString(key));
+    public void showSpinner(String message) {
+        ui.showSpinnerForm(message);
     }
 
     public void showSumEnterForm(PaymentRequest request, Consumer<BigDecimal> amountConsumer, boolean activeSumEnter) {
@@ -88,7 +88,7 @@ public class UIService {
 
     private SumToPayFormParameters buildFormParameters(Receipt receipt, BigDecimal amount, boolean activeSumEnter) {
         SumToPayFormParameters parameters = new SumToPayFormParameters(CAPTION, receipt);
-        parameters.setInputHint(resBundle.getString(ENTER_SUM_TO_PAY));
+        parameters.setInputHint(ENTER_SUM_TO_PAY);
         parameters.setDefaultSum(amount);
         if (activeSumEnter) {
             parameters.setMinSum(amount);

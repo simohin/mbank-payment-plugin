@@ -1,6 +1,5 @@
 package common.util;
 
-import common.config.CustomerDisplayConfig;
 import common.config.LogConfig;
 import common.config.PluginConfig;
 import common.config.UIConfig;
@@ -18,12 +17,14 @@ import ru.crystals.pos.spi.ui.UIForms;
 
 import java.util.Collections;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static common.config.CustomerDisplayConfig.getDisplay;
 
 public class ErrorHandlingUtil {
 
     public static final String BASE_ERROR_MESSAGE = "Ошибка";
+    private final static AtomicBoolean IS_LOCKED = new AtomicBoolean(false);
 
     private static final ThreadLocal<String> transactionIdFieldName = new ThreadLocal<String>() {{
         set("transaction.number.field.name");
@@ -39,44 +40,77 @@ public class ErrorHandlingUtil {
     }
 
     public static void runWithHandling(Runnable action, PaymentCallback callback) {
+
         Logger logger = LogConfig.getLogger();
-        UIForms ui = UIConfig.getUiForms();
-        getDisplay().clear();
-        try {
-            action.run();
-        } catch (TerminalUnavailableError e) {
-//            Если в конфиге отключено ручное подтверждение или оно отключено для конкретно брошенного исключения - сразу завершаем
-            if (!PluginConfig.getProperties().isManualConfirmation() || !e.isProcessManual()) {
-                logger.error(e.getMessage(), e);
-                ui.showErrorForm(e.getMessage(), callback::paymentNotCompleted);
-            } else {
-                ui.showDialogForm(
-                        new DialogFormParameters("Проверьте статус оплаты в истории терминала. Оплата прошла?", "Да", "Нет"),
-                        new DialogListener() {
-                            @Override
-                            public void eventCanceled() {
-                                callback.paymentNotCompleted();
-                            }
-
-                            @Override
-                            public void eventButton1pressed() {
-                                handleYes(callback);
-                            }
-
-                            @Override
-                            public void eventButton2pressed() {
-                                callback.paymentNotCompleted();
-                            }
-                        }
-                );
+        if (tryLock(logger)) {
+            UIForms ui;
+            try {
+                ui = UIConfig.getUiForms();
+            } catch (Exception e) {
+                logger.error(getErrorMessage(e), e);
+                return;
+            } finally {
+                unlock(logger);
             }
-        } catch (Exception e) {
-            String message = (e instanceof BaseError) ? e.getMessage() : BASE_ERROR_MESSAGE;
-            logger.error(message, e);
-            getDisplay().clear();
-            ui.showErrorForm(message, callback::paymentNotCompleted);
+
+            try {
+                getDisplay().clear();
+                action.run();
+            } catch (TerminalUnavailableError e) {
+//            Если в конфиге отключено ручное подтверждение или оно отключено для конкретно брошенного исключения - сразу завершаем
+                if (!PluginConfig.getProperties().isManualConfirmation() || !e.isProcessManual()) {
+                    logger.error(e.getMessage(), e);
+                    ui.showErrorForm(e.getMessage(), callback::paymentNotCompleted);
+                } else {
+                    ui.showDialogForm(
+                            new DialogFormParameters("Проверьте статус оплаты в истории терминала. Оплата прошла?", "Да", "Нет"),
+                            new DialogListener() {
+                                @Override
+                                public void eventCanceled() {
+                                    callback.paymentNotCompleted();
+                                }
+
+                                @Override
+                                public void eventButton1pressed() {
+                                    handleYes(callback);
+                                }
+
+                                @Override
+                                public void eventButton2pressed() {
+                                    callback.paymentNotCompleted();
+                                }
+                            }
+                    );
+                }
+            } catch (Exception e) {
+                String message = getErrorMessage(e);
+                logger.error(message, e);
+                getDisplay().clear();
+                ui.showErrorForm(message, callback::paymentNotCompleted);
+            } finally {
+                unlock(logger);
+            }
+        } else {
+            logger.error("Task already in progress. Skipping thread: {} ", Thread.currentThread().getName());
         }
 
+    }
+
+    private static boolean tryLock(Logger logger) {
+        boolean isLocked = IS_LOCKED.compareAndSet(false, true);
+
+        logger.debug("Trying lock : {} by thread {}", isLocked, Thread.currentThread().getName());
+        return isLocked;
+    }
+
+    private static void unlock(Logger logger) {
+        logger.debug("Unlock by thread {}", Thread.currentThread().getName());
+        IS_LOCKED.set(false);
+    }
+
+    private static String getErrorMessage(Exception e) {
+        String message = (e instanceof BaseError) ? e.getMessage() : BASE_ERROR_MESSAGE;
+        return message;
     }
 
 
