@@ -4,6 +4,7 @@ import common.config.LogConfig;
 import kz.kaspi.qr.plugin.integration.dto.PaymentDetails;
 import kz.kaspi.qr.plugin.integration.dto.PaymentStatus;
 import kz.kaspi.qr.plugin.integration.dto.PaymentStatusData;
+import kz.kaspi.qr.plugin.integration.dto.ReturnData;
 import lombok.Data;
 import org.slf4j.Logger;
 import ru.crystals.pos.spi.plugin.payment.PaymentCallback;
@@ -25,6 +26,7 @@ public class Context {
     private PaymentStatusData statusData;
     private Type type = Type.PAYMENT;
     private Set<PaymentStatus> processedStatuses = new HashSet<>();
+    private ReturnData returnData;
 
     public void lock() {
         lock.set(true);

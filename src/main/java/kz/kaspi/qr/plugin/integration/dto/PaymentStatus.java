@@ -11,6 +11,8 @@ public enum PaymentStatus {
     UNKNOWN,
     @JsonProperty("QrTokenCreated")
     CREATED,
+    @JsonProperty("CustomerIdentityObtained")
+    CUSTOMER_IDENTITY_OBTAINED,
     @JsonProperty("Wait")
     WAIT,
     @JsonProperty("Processed")

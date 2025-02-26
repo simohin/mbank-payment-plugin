@@ -11,6 +11,7 @@ import ru.crystals.pos.spi.plugin.payment.PaymentRequest;
 import ru.crystals.pos.spi.plugin.payment.RefundRequest;
 import ru.crystals.pos.spi.receipt.Receipt;
 import ru.crystals.pos.spi.ui.DialogFormParameters;
+import ru.crystals.pos.spi.ui.QrFormParameters;
 import ru.crystals.pos.spi.ui.UIForms;
 import ru.crystals.pos.spi.ui.payment.SumToPayFormParameters;
 
@@ -21,10 +22,11 @@ import static common.config.UIConfig.getUiForms;
 
 public class UIService {
 
+    private static final int TIMEOUT_MS = 500;
     private final UIForms ui = getUiForms();
     private static final ResBundle resBundle = ResBundleConfig.getResBundle();
     private static final String ENTER_SUM_TO_PAY = resBundle.getString("enter.sum.to.pay");
-    public static final String CAPTION = resBundle.getString("plugin.name");
+    private static final String CAPTION = resBundle.getString("plugin.name");
 
     public void showSpinner(String message) {
         ui.showSpinnerForm(message);
@@ -64,6 +66,14 @@ public class UIService {
         ui.showErrorForm(title, listener);
     }
 
+    public void showTimingOut(String title, Runnable onTimer) {
+        ui.showTimingOutForm(title, TIMEOUT_MS, onTimer::run);
+    }
+
+    public void showQrCode(String payload, String title, BigDecimal amount) {
+        ui.showQrForm(new QrFormParameters(payload, title, amount));
+    }
+
     private void showSumEnterForm(Receipt receipt, BigDecimal amount, Consumer<BigDecimal> amountConsumer, PaymentCallback callback, boolean activeSumEnter) {
 
         SumToPayFormParameters parameters = buildFormParameters(receipt, amount, activeSumEnter);
@@ -95,4 +105,5 @@ public class UIService {
         }
         return parameters;
     }
+
 }

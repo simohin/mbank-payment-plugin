@@ -4,6 +4,7 @@ import kz.kaspi.qr.plugin.integration.dto.Create;
 import kz.kaspi.qr.plugin.integration.dto.DeviceRegistration;
 import kz.kaspi.qr.plugin.integration.dto.DeviceToken;
 import kz.kaspi.qr.plugin.integration.dto.PaymentCreate;
+import kz.kaspi.qr.plugin.integration.dto.ReturnPaymentRequest;
 import kz.kaspi.qr.plugin.integration.dto.response.DeleteDeviceResponse;
 import kz.kaspi.qr.plugin.integration.dto.response.DeviceTokenResponse;
 import kz.kaspi.qr.plugin.integration.dto.response.PaymentCreateLinkResponse;
@@ -11,6 +12,7 @@ import kz.kaspi.qr.plugin.integration.dto.response.PaymentCreateResponse;
 import kz.kaspi.qr.plugin.integration.dto.response.PaymentDetailsResponse;
 import kz.kaspi.qr.plugin.integration.dto.response.PaymentStatusResponse;
 import kz.kaspi.qr.plugin.integration.dto.response.ReturnCreateResponse;
+import kz.kaspi.qr.plugin.integration.dto.response.ReturnPaymentResponse;
 import kz.kaspi.qr.plugin.integration.dto.response.TradePointsResponse;
 import retrofit2.Call;
 import retrofit2.http.Body;
@@ -46,4 +48,7 @@ public interface KaspiQRPayClient {
 
     @GET("payment/details")
     Call<PaymentDetailsResponse> getDetails(@Query("QrPaymentId") String paymentId, @Query("DeviceToken") String token);
+
+    @POST("payment/return")
+    Call<ReturnPaymentResponse> returnPayment(@Body ReturnPaymentRequest request);
 }

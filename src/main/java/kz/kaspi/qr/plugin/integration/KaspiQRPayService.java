@@ -14,6 +14,8 @@ import kz.kaspi.qr.plugin.integration.dto.PaymentDetails;
 import kz.kaspi.qr.plugin.integration.dto.PaymentStatus;
 import kz.kaspi.qr.plugin.integration.dto.PaymentStatusData;
 import kz.kaspi.qr.plugin.integration.dto.Return;
+import kz.kaspi.qr.plugin.integration.dto.ReturnData;
+import kz.kaspi.qr.plugin.integration.dto.ReturnPaymentRequest;
 import kz.kaspi.qr.plugin.integration.dto.StatusCode;
 import kz.kaspi.qr.plugin.integration.dto.TradePoint;
 import kz.kaspi.qr.plugin.integration.dto.response.KaspiQRPayResponse;
@@ -24,6 +26,7 @@ import retrofit2.Response;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.Objects;
@@ -136,6 +139,11 @@ public class KaspiQRPayService {
         return qrReturn;
     }
 
+    public ReturnData returnPayment(String token, BigDecimal amount, String paymentId, String returnId) {
+        val request = new ReturnPaymentRequest(token, paymentId, returnId, amount.setScale(2, RoundingMode.HALF_UP).doubleValue());
+        return executeWithHandling(client.returnPayment(request));
+    }
+
     public void updateStatus(Context context) throws IOException {
         logger.trace("Updating status for context: {}", context);
         waitInterval();
@@ -212,6 +220,11 @@ public class KaspiQRPayService {
         if (!response.isSuccessful()) {
             logger.error("Failed on request execution. Code: {}, body {}", response.code(), body);
             throw new BaseError(response.message());
+        }
+
+        if (body != null && body.getStatusCode() != StatusCode.SUCCESS) {
+            logger.error("Failed on request execution. StatusCode: {}, body {}", body.getStatusCode(), body);
+            throw new BaseError(body.getMessage());
         }
 
         return body;

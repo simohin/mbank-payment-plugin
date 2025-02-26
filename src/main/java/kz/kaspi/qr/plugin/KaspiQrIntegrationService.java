@@ -12,8 +12,10 @@ import kz.kaspi.qr.plugin.integration.KaspiQRPayService;
 import kz.kaspi.qr.plugin.integration.dto.PaymentDetails;
 import kz.kaspi.qr.plugin.integration.dto.PaymentStatus;
 import kz.kaspi.qr.plugin.integration.dto.PaymentStatusData;
+import kz.kaspi.qr.plugin.integration.dto.ReturnData;
 import lombok.val;
 import org.slf4j.Logger;
+import ru.crystals.pos.api.comm.CommunicationMessage;
 import ru.crystals.pos.api.events.ShiftEventListener;
 import ru.crystals.pos.api.ext.loyal.dto.Slip;
 import ru.crystals.pos.api.ext.loyal.dto.SlipParagraph;
@@ -40,26 +42,36 @@ import java.util.UUID;
 import static common.config.CustomerDisplayConfig.getDisplay;
 import static common.config.LogConfig.getLogger;
 import static common.config.UIConfig.getUiService;
+import static common.exception.BaseError.DEFAULT_ERROR_MESSAGE;
+import static common.service.TransactionAmountHandler.getTransactionAmount;
 import static common.service.slip.SlipService.buildSlip;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 public class KaspiQrIntegrationService implements BankIntegrationService, ShiftEventListener {
 
-    public static final String KASPI_QR_BANK_ID = "KASPIQR";
-    public static final String PAYMENT_ID = "kaspi.qr.payment.id";
-    public static final String AMOUNT = "kaspi.qr.payment.amount";
-    public static final String TERMINAL_NUMBER = "kaspi.qr.terminal.number";
-    public static final String TRANSACTION_DATE = "kaspi.qr.transaction.date";
-    public static final String BANK_ID = "kaspi.qr.bank.id";
-    public static final String PAYMENT_METHOD = "kaspi.qr.payment.method";
-    public static final String ADDRESS = "kaspi.qr.payment.address";
-    public static final String CITY = "kaspi.qr.payment.city";
-    public static final String STORE_NAME = "kaspi.qr.payment.store.name";
-    public static final String LOAN_OFFER_NAME = "kaspi.qr.payment.loan.offer.name";
-    public static final String LOAN_TERM = "kaspi.qr.payment.loan.term";
-    public static final String IS_OFFER = "kaspi.qr.payment.is.offer";
-    public static final String PRODUCT_TYPE = "kaspi.qr.payment.product.type";
-    public static final String METHOD = "Kaspi QR";
+    private static final String KASPI_QR_BANK_ID = "KASPIQR";
+    private static final String PAYMENT_ID = "kaspi.qr.payment.id";
+    private static final String AMOUNT = "kaspi.qr.payment.amount";
+    private static final String TERMINAL_NUMBER = "kaspi.qr.terminal.number";
+    private static final String TRANSACTION_DATE = "kaspi.qr.transaction.date";
+    private static final String BANK_ID = "kaspi.qr.bank.id";
+    private static final String PAYMENT_METHOD = "kaspi.qr.payment.method";
+    private static final String ADDRESS = "kaspi.qr.payment.address";
+    private static final String CITY = "kaspi.qr.payment.city";
+    private static final String STORE_NAME = "kaspi.qr.payment.store.name";
+    private static final String LOAN_OFFER_NAME = "kaspi.qr.payment.loan.offer.name";
+    private static final String LOAN_TERM = "kaspi.qr.payment.loan.term";
+    private static final String IS_OFFER = "kaspi.qr.payment.is.offer";
+    private static final String PRODUCT_TYPE = "kaspi.qr.payment.product.type";
+    private static final String METHOD = "Kaspi QR";
+    private static final String SCAN_QR_TITLE = "Сканируйте и платите Kaspi QR";
+    private static final String SCAN_QR_TITLE_KZ = "Сканерлеңіз де, төлеңіз Kaspi QR";
+    private static final String WAIT_CONFIRM_MESSAGE = "Төлемдi қосымшада растаңыз\nПодтвердите оплату в приложении";
+    private static final String INIT_MESSAGE_RU = "Готовимся к приему оплаты";
+    private static final String INIT_MESSAGE_KZ = "Төлем қабылдауға дайындалудамыз...";
+    private static final String INIT_MESSAGE = INIT_MESSAGE_KZ + "\n" + INIT_MESSAGE_RU;
+    private static final String SUCCESS_MESSAGE_RU = "Оплата принята";
+    private static final String SUCCESS_MESSAGE_KZ = "Төлем қабылданды";
     private final Logger logger = getLogger();
     private final KaspiQRPayService service = new KaspiQRPayService();
     private final SetApiPrinter printer = PrinterConfig.getPrinter();
@@ -89,13 +101,13 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
 
     @Override
     public void process(PaymentRequest paymentRequest, int amount) {
+        showInitMessage();
         val scaledAmount = new BigDecimal(amount).setScale(2, RoundingMode.HALF_UP);
         val payment = service.paymentCreate(token, scaledAmount, UUID.randomUUID().toString());
         showQr(payment.getQrToken(), scaledAmount);
         val context = new Context(payment.getQrPaymentId(), paymentRequest.getPaymentCallback());
         process(context);
     }
-
 
     @Override
     public void process(RefundRequest refundRequest, int amount) {
@@ -108,6 +120,7 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
         showQr(returnDto.getQrToken(), scaledAmount);
         val context = new Context(returnId, refundRequest.getPaymentCallback());
         context.setType(Context.Type.RETURN);
+        context.setDetails(details);
         process(context);
     }
 
@@ -150,6 +163,11 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
         logger.trace("Processing status: {}", paymentStatus);
 
         switch (paymentStatus) {
+            case CUSTOMER_IDENTITY_OBTAINED:
+                ReturnData returnData = service.returnPayment(token, getTransactionAmount(), context.getDetails().getQrPaymentId(), context.getId());
+                context.setReturnData(returnData);
+                processNextStep(context);
+                return;
             case PROCESSED:
                 try {
                     PaymentDetails details = service.getDetails(context.getId(), token);
@@ -170,12 +188,13 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
             case WAIT:
                 if (!context.checkIsStatusProcessed(PaymentStatus.WAIT)) {
                     logger.trace("Wait status not processed: {}", context);
-                    uiService.showSpinner("Ожидание подтверждения");
+                    uiService.showSpinner(WAIT_CONFIRM_MESSAGE);
                     display.clear();
-                    display.display(new CustomerDisplayMessage("Ожидание подтверждения", Duration.ofMinutes(1)));
+                    display.display(new CustomerDisplayMessage(WAIT_CONFIRM_MESSAGE, Duration.ofMinutes(1)));
                 } else {
                     logger.trace("Wait status already processed: {}", context);
                 }
+
             case UNKNOWN:
             default:
                 process(context);
@@ -186,8 +205,10 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
 
     private void processFailed(Context context) {
         display.clear();
+        String title = Optional.ofNullable(context.getMessage()).orElse(DEFAULT_ERROR_MESSAGE);
+        display.display(new CustomerDisplayMessage(title, Duration.ofSeconds(3)));
         uiService.showError(
-                Optional.ofNullable(context.getMessage()).orElse("Оплата не прошла"),
+                title,
                 () -> {
                     logger.trace("Processing failed: {}", context);
                     context.getCallback().paymentNotCompleted();
@@ -212,23 +233,70 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
     }
 
     private void showQr(String paymentQrToken, BigDecimal scaledAmount) {
-        val title = "Сканируйте и платите через приложение Kaspi.kz";
 
-        if (properties.isShowQrOnClientDisplay()) {
-            display.clear();
-            display.display(new CustomerDisplayMessage(title, paymentQrToken, scaledAmount));
-            logger.trace("slip showed for qr {}", paymentQrToken);
-        } else {
-            val slip = new Slip();
-            val paragraphs = slip.getParagraphs();
-            paragraphs.add(new SlipParagraph(SlipParagraphType.TEXT, title));
-            paragraphs.add(new SlipParagraph(SlipParagraphType.QR, paymentQrToken));
-            try {
-                printer.print(slip);
-            } catch (SetApiPrinterException e) {
-                throw new BaseError(e);
+        switch (properties.getShowQrOn()) {
+            case SLIP: {
+                val slip = new Slip();
+                val paragraphs = slip.getParagraphs();
+                paragraphs.add(new SlipParagraph(SlipParagraphType.TEXT, SCAN_QR_TITLE_KZ));
+                paragraphs.add(new SlipParagraph(SlipParagraphType.QR, paymentQrToken));
+                paragraphs.add(new SlipParagraph(SlipParagraphType.TEXT, SCAN_QR_TITLE));
+                try {
+                    printer.print(slip);
+                } catch (SetApiPrinterException e) {
+                    throw new BaseError(e);
+                }
+                break;
+            }
+            case CASHIER_DISPLAY: {
+                uiService.showQrCode(paymentQrToken, SCAN_QR_TITLE, scaledAmount);
+                break;
+            }
+            case CUSTOMER_DISPLAY:
+            default: {
+                display.clear();
+                CustomerDisplayMessage message = new CustomerDisplayMessage(SCAN_QR_TITLE, paymentQrToken, scaledAmount);
+                CommunicationMessage communicationMessage = message.getMessage();
+                communicationMessage.setHeader(SCAN_QR_TITLE_KZ);
+                display.display(message);
+                logger.trace("slip showed for qr {}", paymentQrToken);
+                break;
             }
         }
+    }
+
+    private void showInitMessage() {
+
+        switch (properties.getShowQrOn()) {
+            case SLIP: {
+                break;
+            }
+            case CASHIER_DISPLAY: {
+                uiService.showSpinner(INIT_MESSAGE);
+                break;
+            }
+            case CUSTOMER_DISPLAY:
+            default: {
+                display.clear();
+                CustomerDisplayMessage message = new CustomerDisplayMessage(INIT_MESSAGE_RU, Duration.ZERO);
+                CommunicationMessage communicationMessage = message.getMessage();
+                communicationMessage.setHeader(INIT_MESSAGE_KZ);
+                display.display(message);
+                break;
+            }
+        }
+    }
+
+    private void showSuccessMessage(BigDecimal amount, Runnable onComplete) {
+
+        CustomerDisplayMessage message = new CustomerDisplayMessage(SUCCESS_MESSAGE_RU, Duration.ofSeconds(3));
+        CommunicationMessage communicationMessage = message.getMessage();
+        communicationMessage.setSum(amount);
+        communicationMessage.setHeader(SUCCESS_MESSAGE_KZ);
+
+        display.clear();
+        display.display(message);
+        uiService.showTimingOut(SUCCESS_MESSAGE_KZ + "\n" + amount.setScale(2, RoundingMode.HALF_UP).toPlainString() + "\n" + SUCCESS_MESSAGE_RU, onComplete);
     }
 
     private void processSuccess(PaymentCallback callback, PaymentDetails details, PaymentStatusData statusData) {
@@ -240,7 +308,8 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
         payment.setSum(amount);
         val data = payment.getData();
         data.put(PAYMENT_ID, details.getQrPaymentId());
-        data.put(AMOUNT, amount.setScale(2, RoundingMode.DOWN).toPlainString());
+        String amountString = amount.setScale(2, RoundingMode.DOWN).toPlainString();
+        data.put(AMOUNT, amountString);
         data.put(TERMINAL_NUMBER, terminalId);
         data.put(TRANSACTION_DATE, date);
         data.put(BANK_ID, KASPI_QR_BANK_ID);
@@ -269,10 +338,14 @@ public class KaspiQrIntegrationService implements BankIntegrationService, ShiftE
 
         slips.add(buildSlip(slipProperties));
 
-        try {
-            callback.paymentCompleted(payment);
-        } catch (InvalidPaymentException e) {
-            throw new BaseError(e);
-        }
+        showSuccessMessage(amount, () -> {
+            try {
+                callback.paymentCompleted(payment);
+            } catch (InvalidPaymentException e) {
+                logger.error(e.getMessage(), e);
+                throw new BaseError(e);
+            }
+        });
+
     }
 }

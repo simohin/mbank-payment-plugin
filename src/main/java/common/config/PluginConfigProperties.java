@@ -29,8 +29,8 @@ public final class PluginConfigProperties {
     private boolean activeSumEnterFormPayment;
     @JsonProperty(defaultValue = "true")
     private boolean activeSumEnterFormRefund;
-    @JsonProperty(defaultValue = "true")
-    private boolean showQrOnClientDisplay;
+    @JsonProperty(defaultValue = "CUSTOMER_DISPLAY")
+    private ShowQrOption showQrOn;
     @JsonProperty
     private String rootCaPath;
     @JsonProperty
